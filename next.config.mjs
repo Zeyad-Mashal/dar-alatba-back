@@ -1,0 +1,28 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  outputFileTracingRoot: projectRoot,
+  experimental: {
+    proxyClientMaxBodySize: "20mb",
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
+  },
+  turbopack: {
+    root: projectRoot,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com"
+      }
+    ]
+  }
+};
+
+export default nextConfig;

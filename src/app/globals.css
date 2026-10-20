@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-cairo), sans-serif;
+  --font-serif: var(--font-amiri), serif;
+  
+  --color-brand-emerald: #0f3b2e;
+  --color-brand-emerald-light: #165241;
+  --color-brand-emerald-dark: #0b2920;
+  
+  --color-brand-gold: #d4af37;
+  --color-brand-gold-accent: #c5a880;
+  --color-brand-gold-light: #ebdcb9;
+  
+  --color-brand-cream: #faf6f0;
+  --color-brand-cream-dark: #ebdcb9;
+  
+  --animate-fade-in: fade-in 1s ease-out forwards;
+  --animate-slide-up: slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Custom CSS Scrollbar and styles */
+html, body {
+  scroll-behavior: smooth !important;
+}
+
+/* Hide scrollbar when intro animation is active */
+.no-scroll {
+  overflow: hidden !important;
+}
+
+/* Custom glassmorphism classes */
+.glass-nav {
+  background: rgba(15, 59, 46, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(197, 168, 128, 0.25);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(197, 168, 128, 0.15);
+}
+
+/* Islamic pattern background overlay helper */
+.arabesque-pattern {
+  background-image: radial-gradient(rgba(197, 168, 128, 0.08) 1.5px, transparent 1.5px), 
+                    radial-gradient(rgba(197, 168, 128, 0.08) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
+}
+
+/* Gold glowing shadow */
+.glow-gold {
+  box-shadow: 0 0 20px rgba(197, 168, 128, 0.3);
+}
+
+.glow-gold-lg {
+  box-shadow: 0 0 45px rgba(197, 168, 128, 0.45);
+}
+
+/* Islamic geometric SVG patterns */
+.pattern-bg {
+  background-color: #faf6f0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M40 0l40 40-40 40L0 40z' fill='%23c5a880' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* Admin Login Modal Styling */
+.admin-login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 41, 32, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modal-fade-in 0.3s ease-out forwards;
+}
+
+.admin-login-modal-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: #0b2920;
+  background-image: radial-gradient(rgba(197, 168, 128, 0.04) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+  border: 2px solid rgba(197, 168, 128, 0.35);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(197, 168, 128, 0.1);
+  animation: modal-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(197, 168, 128, 0.2);
+  padding-bottom: 16px;
+}
+
+.close-modal-x-btn {
+  background: transparent;
+  border: none;
+  color: rgba(235, 220, 185, 0.6);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(197, 168, 128, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-modal-x-btn:hover {
+  color: #ebdcb9;
+  background-color: rgba(197, 168, 128, 0.15);
+  transform: rotate(90deg);
+}
+
+.modal-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-text-input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: rgba(15, 59, 46, 0.5);
+  border: 1px solid rgba(197, 168, 128, 0.25);
+  border-radius: 10px;
+  color: #faf6f0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.modal-text-input:focus {
+  border-color: #ebdcb9;
+  background-color: rgba(15, 59, 46, 0.8);
+  box-shadow: 0 0 10px rgba(197, 168, 128, 0.2);
+}
+
+.modal-text-input::placeholder {
+  color: rgba(250, 246, 240, 0.3);
+}
+
+.modal-submit-login-btn {
+  background: linear-gradient(135deg, #ebdcb9, #c5a880);
+  color: #0b2920;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 14px;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(197, 168, 128, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: block;
+}
+
+.modal-submit-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(197, 168, 128, 0.4);
+  background: linear-gradient(135deg, #c5a880, #ebdcb9);
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-slide-up {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
