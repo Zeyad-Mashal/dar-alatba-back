@@ -13,7 +13,10 @@ export function CartProvider({ children }) {
   // Load cart and products from localStorage on mount
   useEffect(() => {
     setIsMounted(true);
-    const savedCart = localStorage.getItem("dar_mroani_cart");
+    localStorage.removeItem("dar_mroani_cart");
+    localStorage.removeItem("dar_mroani_products");
+
+    const savedCart = localStorage.getItem("dar_alatba_cart");
     if (savedCart) {
       try {
         setCartItems(JSON.parse(savedCart));
@@ -22,7 +25,7 @@ export function CartProvider({ children }) {
       }
     }
 
-    const savedProducts = localStorage.getItem("dar_mroani_products");
+    const savedProducts = localStorage.getItem("dar_alatba_products");
     if (savedProducts) {
       try {
         setProductsList(JSON.parse(savedProducts));
@@ -33,7 +36,7 @@ export function CartProvider({ children }) {
       // Load static products and save them
       import("../data/products").then((module) => {
         setProductsList(module.products);
-        localStorage.setItem("dar_mroani_products", JSON.stringify(module.products));
+        localStorage.setItem("dar_alatba_products", JSON.stringify(module.products));
       });
     }
   }, []);
@@ -41,7 +44,7 @@ export function CartProvider({ children }) {
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (isMounted) {
-      localStorage.setItem("dar_mroani_cart", JSON.stringify(cartItems));
+      localStorage.setItem("dar_alatba_cart", JSON.stringify(cartItems));
     }
   }, [cartItems, isMounted]);
 
@@ -85,7 +88,7 @@ export function CartProvider({ children }) {
   const addProduct = (newProduct) => {
     setProductsList((prev) => {
       const updated = [newProduct, ...prev];
-      localStorage.setItem("dar_mroani_products", JSON.stringify(updated));
+      localStorage.setItem("dar_alatba_products", JSON.stringify(updated));
       return updated;
     });
   };
@@ -93,7 +96,7 @@ export function CartProvider({ children }) {
   const updateProduct = (updatedProduct) => {
     setProductsList((prev) => {
       const updated = prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
-      localStorage.setItem("dar_mroani_products", JSON.stringify(updated));
+      localStorage.setItem("dar_alatba_products", JSON.stringify(updated));
       return updated;
     });
   };
@@ -101,7 +104,7 @@ export function CartProvider({ children }) {
   const deleteProduct = (id) => {
     setProductsList((prev) => {
       const updated = prev.filter((p) => p.id !== id);
-      localStorage.setItem("dar_mroani_products", JSON.stringify(updated));
+      localStorage.setItem("dar_alatba_products", JSON.stringify(updated));
       return updated;
     });
   };

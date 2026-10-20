@@ -15,9 +15,27 @@ const cairo = Cairo({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
+const siteUrl = "https://dar-alatba-back.vercel.app";
+const siteTitle = "دار الأطباء | الكتب والراديو الإسلامي";
+const siteDescription =
+  "متجر دار الأطباء - وجهتك المتميزة لبيع أحدث وأقيم الكتب الإسلامية، بالإضافة إلى أجهزة الراديو التراثية عالية الجودة بروح مصرية أصيلة.";
+
 export const metadata = {
-  title: "دار الأطباء | الكتب والراديو الإسلامي",
-  description: "متجر دار الأطباء - وجهتك المتميزة لبيع أحدث وأقيم الكتب الإسلامية، بالإضافة إلى أجهزة الراديو التراثية عالية الجودة بروح مصرية أصيلة.",
+  metadataBase: new URL(siteUrl),
+  applicationName: "دار الأطباء",
+  title: {
+    default: siteTitle,
+    template: "%s | دار الأطباء",
+  },
+  description: siteDescription,
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "دار الأطباء",
+    locale: "ar_EG",
+    type: "website",
+  },
   icons: {
     icon: "/favicon.ico",
   },
