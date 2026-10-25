@@ -567,3 +567,48 @@ const lineId = hasVariant
 | إضافة مقاس | POST | `/addSize` | JSON |
 | تعديل مقاس | PUT | `/updateSize/:id` | JSON |
 | حذف مقاس | DELETE | `/deleteSize/:id` | — |
+| عبارات الشريط كلها | GET | `/getAllAnnouncements` | — |
+| العبارات الظاهرة | GET | `/getActiveAnnouncements` | — |
+| إضافة عبارة | POST | `/addAnnouncement` | JSON |
+| تعديل عبارة | PUT | `/updateAnnouncement/:id` | JSON |
+| حذف عبارة | DELETE | `/deleteAnnouncement/:id` | — |
+
+## 12. شريط العروض
+
+الشريط الأزرق أعلى الموقع سطر واحد. النص يظهر كما كُتب، بما فيه المسافات والنقط، من غير ما السيرفر يحذفها.
+
+`GET /getActiveAnnouncements` يرجع العبارات الظاهرة فقط، مرتبة. كل عبارة فيها النص العربي والإنجليزي.
+
+```json
+{
+  "_id": "ID",
+  "text": "خصم ١٥٪ على الأطقم  ·  ",
+  "textAr": "خصم ١٥٪ على الأطقم  ·  ",
+  "textEn": "15% off sets  ·  ",
+  "isActive": true,
+  "sortOrder": 1
+}
+```
+
+`text` نسخة من `textAr`. اعرض لغة الصفحة فقط: `textAr` لما `lang` عربي، و `textEn` لما `lang` إنجليزي. اجمع عبارات اللغة الواحدة بالترتيب من غير فاصل إضافي:
+
+```js
+const english = document.documentElement.lang.toLowerCase().startsWith("en");
+const line = items.map((item) => (english ? item.textEn : item.textAr)).join("");
+```
+
+لو `line` فاضي، لا تعرض الشريط. اعرضه في سطر واحد بخلفية `#1a6dff` ونص أبيض و `white-space: pre` حتى تبقى المسافات. اتجاه السطر `rtl` للعربي و `ltr` للإنجليزي.
+
+الإضافة والتعديل، والحقلان مطلوبان:
+
+```json
+{
+  "textAr": "شحن مجاني للطلبات فوق ٥٠ جنيه  ·  ",
+  "textEn": "Free shipping on orders over 50 EGP  ·  ",
+  "isActive": true
+}
+```
+
+`isActive: false` يخفي العبارة ويتركها محفوظة. الحذف يكون بـ `DELETE /deleteAnnouncement/:id`.
+
+`GET /getAllAnnouncements` للأدمن ويرجع الظاهر والمخفي.

@@ -5,15 +5,59 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "../../context/CartContext";
+import AnnouncementBar, { announcementLine } from "../AnnouncementBar/AnnouncementBar";
 import "./Navbar.css";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [announcements, setAnnouncements] = useState([]);
+  const [language, setLanguage] = useState("ar");
   const { cartCount, setIsCartOpen } = useCart();
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/getActiveAnnouncements`, {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || "تعذر تحميل الشريط");
+        return payload.data || [];
+      })
+      .then((data) => {
+        if (!cancelled) setAnnouncements(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAnnouncements([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const readLanguage = () => {
+      const current = document.documentElement.lang || "ar";
+      setLanguage(current.toLowerCase().startsWith("en") ? "en" : "ar");
+    };
+    readLanguage();
+    const observer = new MutationObserver(readLanguage);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    return () => observer.disconnect();
+  }, []);
+
+  const hasAnnouncement = announcementLine(announcements, language).length > 0;
+
+  useEffect(() => {
+    document.body.classList.toggle("has-announcement-bar", hasAnnouncement);
+    return () => document.body.classList.remove("has-announcement-bar");
+  }, [hasAnnouncement]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -96,8 +140,10 @@ export default function Navbar() {
   );
 
   return (
+    <>
+    {hasAnnouncement && <AnnouncementBar items={announcements} language={language} />}
     <nav
-      className={`navbar-container ${isScrolled ? "scrolled" : ""} ${isMobileMenuOpen ? "mobile-menu-open" : ""} ${onDarkHero ? "on-dark-hero" : ""}`}
+      className={`navbar-container ${hasAnnouncement ? "has-announcement" : ""} ${isScrolled ? "scrolled" : ""} ${isMobileMenuOpen ? "mobile-menu-open" : ""} ${onDarkHero ? "on-dark-hero" : ""}`}
     >
       <div className="navbar-wrapper">
         {/* Right: Logo & Title */}
@@ -249,5 +295,6 @@ export default function Navbar() {
         </ul>
       </div>
     </nav>
+    </>
   );
 }

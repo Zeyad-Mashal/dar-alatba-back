@@ -8,6 +8,7 @@ import CategoriesPanel from "./CategoriesPanel";
 import OptionsPanel from "./OptionsPanel";
 import ProductsPanel from "./ProductsPanel";
 import OrdersPanel from "./OrdersPanel";
+import AnnouncementsPanel from "./AnnouncementsPanel";
 import "./admin.css";
 
 export default function AdminPage() {
@@ -126,6 +127,14 @@ export default function AdminPage() {
               🗂️ الأقسام
             </button>
             <button
+              onClick={() => setActiveTab("announcements")}
+              className={`sidebar-tab-btn w-full text-right ${
+                activeTab === "announcements" ? "active" : ""
+              }`}
+            >
+              📢 شريط العروض
+            </button>
+            <button
               onClick={() => setActiveTab("options")}
               className={`sidebar-tab-btn w-full text-right ${
                 activeTab === "options" ? "active" : ""
@@ -145,6 +154,7 @@ export default function AdminPage() {
           )}
           {activeTab === "categories" && <CategoriesPanel />}
           {activeTab === "options" && <OptionsPanel />}
+          {activeTab === "announcements" && <AnnouncementsPanel />}
         </main>
       </div>
 

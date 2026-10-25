@@ -35,6 +35,17 @@ const colorSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+const announcementSchema = new mongoose.Schema(
+  {
+    text: { type: String, default: "" },
+    textAr: { type: String, default: "" },
+    textEn: { type: String, default: "" },
+    isActive: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+
 const sizeSchema = new mongoose.Schema(
   {
     nameAr: { type: String, required: true, trim: true },
@@ -84,5 +95,11 @@ export const Category =
 export const Color =
   mongoose.models.Color || mongoose.model("Color", colorSchema);
 export const Size = mongoose.models.Size || mongoose.model("Size", sizeSchema);
+if (mongoose.models.Announcement && !mongoose.models.Announcement.schema.path("textEn")) {
+  mongoose.deleteModel("Announcement");
+}
+export const Announcement =
+  mongoose.models.Announcement ||
+  mongoose.model("Announcement", announcementSchema);
 export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
