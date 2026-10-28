@@ -33,6 +33,24 @@ function formatDate(value) {
   }
 }
 
+function whatsappLabel(whatsapp) {
+  const status =
+    whatsapp.status === "sent"
+      ? "تم إرسال رسالة التأكيد"
+      : whatsapp.status === "failed"
+        ? "تعذر إرسال الرسالة"
+        : "لم تُرسل بعد";
+  const reply =
+    whatsapp.reply === "confirmed"
+      ? "العميل أكّد الطلب"
+      : whatsapp.reply === "cancelled"
+        ? "العميل ألغى الطلب"
+        : whatsapp.reply === "contact"
+          ? "العميل طلب التواصل"
+          : "";
+  return reply ? `${status} — ${reply}` : status;
+}
+
 function shortId(id) {
   if (!id) return "—";
   return String(id).slice(-8).toUpperCase();
@@ -98,6 +116,12 @@ function OrderCard({ order, onComplete, onDelete, onPreview, completingId, delet
             {order.notes && (
               <li>
                 <span className="text-gray-500">ملاحظات:</span> {order.notes}
+              </li>
+            )}
+            {order.whatsapp?.status && (
+              <li>
+                <span className="text-gray-500">واتساب:</span>{" "}
+                {whatsappLabel(order.whatsapp)}
               </li>
             )}
           </ul>

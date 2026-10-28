@@ -101,5 +101,65 @@ if (mongoose.models.Announcement && !mongoose.models.Announcement.schema.path("t
 export const Announcement =
   mongoose.models.Announcement ||
   mongoose.model("Announcement", announcementSchema);
+const orderItemSchema = new mongoose.Schema(
+  {
+    product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", default: null },
+    name: { type: String, default: "" },
+    price: { type: Number, default: 0 },
+    quantity: { type: Number, required: true, min: 1 },
+    image: { type: String, default: "" },
+    sizeId: { type: String, default: "" },
+    colorId: { type: String, default: "" },
+    sizeName: { type: String, default: "" },
+    colorName: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+const orderSchema = new mongoose.Schema(
+  {
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
+    governorate: { type: String, required: true },
+    detailedAddress: { type: String, required: true },
+    transferPhone: { type: String, default: "" },
+    notes: { type: String, default: "" },
+    items: { type: [orderItemSchema], default: [] },
+    totalPrice: { type: Number, required: true, min: 0 },
+    transferImage: { type: imageSchema, default: null },
+    status: { type: String, enum: ["pending", "completed"], default: "pending" },
+    completedAt: { type: Date, default: null },
+    whatsapp: {
+      status: { type: String, default: "" },
+      messageId: { type: String, default: "" },
+      error: { type: String, default: "" },
+      sentAt: { type: Date, default: null },
+      reply: { type: String, default: "" },
+      repliedAt: { type: Date, default: null },
+    },
+  },
+  { timestamps: true },
+);
+
+const beonEventSchema = new mongoose.Schema(
+  {
+    event: { type: String, default: "" },
+    payload: { type: mongoose.Schema.Types.Mixed, default: {} },
+    matchedOrder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      default: null,
+    },
+    reply: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ customerPhone: 1, createdAt: -1 });
+
 export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
+export const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+export const BeonEvent =
+  mongoose.models.BeonEvent || mongoose.model("BeonEvent", beonEventSchema);
