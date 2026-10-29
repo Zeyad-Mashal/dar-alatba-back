@@ -572,6 +572,11 @@ const lineId = hasVariant
 | إضافة عبارة | POST | `/addAnnouncement` | JSON |
 | تعديل عبارة | PUT | `/updateAnnouncement/:id` | JSON |
 | حذف عبارة | DELETE | `/deleteAnnouncement/:id` | — |
+| إنشاء طلب | POST | `/createOrder` | FormData |
+| طلبات المتابعة | GET | `/getAllOrders` | — |
+| الطلبات المكتملة | GET | `/getCompletedOrders` | — |
+| إكمال طلب | PUT | `/completeOrder/:id` | — |
+| حذف طلب | DELETE | `/deleteOrder/:id` | — |
 
 ## 12. شريط العروض
 
@@ -612,3 +617,101 @@ const line = items.map((item) => (english ? item.textEn : item.textAr)).join("")
 `isActive: false` يخفي العبارة ويتركها محفوظة. الحذف يكون بـ `DELETE /deleteAnnouncement/:id`.
 
 `GET /getAllAnnouncements` للأدمن ويرجع الظاهر والمخفي.
+
+## 13. الطلبات وحالات BeOn
+
+العنوان: `https://dar-alatba-back.vercel.app` من غير شرطة في الآخر، والمسارات على الجذر.
+
+الفرونت ينشئ الطلب ويتابع حالته. تأكيد العميل وإلغاؤه من أزرار واتساب بيحصل على السيرفر عن طريق BeOn، والفرونت لا يستدعي مسار BeOn.
+
+### حالة الطلب `status`
+
+اعرض الشارة من `order.status` فقط.
+
+| `status` | الشارة | متى تتغير |
+| --- | --- | --- |
+| `pending` | قيد المراجعة | فور إنشاء الطلب |
+| `received` | تم التأكيد | العميل ضغط «تأكيد الطلب» في واتساب |
+| `cancelled` | ملغي | العميل ضغط «إلغاء الطلب» في واتساب |
+| `completed` | مكتمل | الأدمن أكمل الطلب |
+
+`whatsapp.status` حالة إرسال الرسالة فقط: `sent` أو `failed` أو `pending`. لا تستخدمها كحالة للطلب.
+
+### إنشاء الطلب
+
+`POST /createOrder` بـ `FormData`. لا ترسل `Content-Type`.
+
+| الحقل | مطلوب | المعنى |
+| --- | --- | --- |
+| `customerName` | نعم | الاسم |
+| `customerPhone` | نعم | موبايل العميل، نفس الرقم الذي يصله واتساب |
+| `governorate` | نعم | المحافظة |
+| `detailedAddress` | نعم | العنوان بالتفصيل |
+| `paymentMethod` | نعم في الفورم الجديد | `cod` أو `instapay` أو `vodafone` |
+| `transferPhone` | لا | رقم المحفظة التي حوّلت |
+| `notes` | لا | ملاحظات |
+| `items` | نعم | نص JSON لمصفوفة السلة |
+| `transferImage` | مع إنستاباي وفودافون كاش | صورة إيصال التحويل |
+
+كل عنصر في `items`:
+
+```json
+{
+  "productId": "PRODUCT_ID",
+  "quantity": 1,
+  "sizeId": "",
+  "colorId": "",
+  "sizeName": "",
+  "colorName": ""
+}
+```
+
+`productId` هو معرف المنتج الحقيقي، وليس مفتاح السلة المركب.
+
+طريقة الدفع:
+
+| `paymentMethod` | صورة الإيصال |
+| --- | --- |
+| `cod` | لا تُرسل. الدفع عند الاستلام |
+| `instapay` | مطلوبة في `transferImage` |
+| `vodafone` | مطلوبة في `transferImage` |
+
+رسالة واتساب بعد الطلب تذكر نفس الطريقة: الدفع عند الاستلام، أو إنستاباي، أو فودافون كاش. حالات التأكيد والإلغاء من أزرار BeOn لا تتغير.
+
+الرد `201`:
+
+```json
+{
+  "success": true,
+  "message": "تم تسجيل الطلب",
+  "data": {
+    "_id": "ORDER_ID",
+    "status": "pending",
+    "customerName": "Novex",
+    "customerPhone": "01044194045",
+    "governorate": "القاهرة",
+    "detailedAddress": "العنوان",
+    "paymentMethod": "cod",
+    "totalPrice": 250,
+    "transferImage": { "url": "https://..." },
+    "items": [
+      { "product": "PRODUCT_ID", "name": "اسم المنتج", "price": 250, "quantity": 1, "image": "" }
+    ],
+    "whatsapp": { "status": "sent", "messageId": "", "error": "", "reply": "" }
+  }
+}
+```
+
+`totalPrice` مجموع أسعار المنتجات فقط. الشحن يُحسب في الواجهة.
+
+بعد النجاح اعرض `data.status` وهي `pending`. لو واتساب فشل، الطلب يظل محفوظاً و `whatsapp.status` تكون `failed`.
+
+### شاشات الأدمن
+
+`GET /getAllOrders` يرجع `pending` و `received` و `cancelled`. افرز بالشارة حسب `status`، ولا تعامل القائمة كلها على أنها قيد المراجعة.
+
+`GET /getCompletedOrders` يرجع `completed` فقط.
+
+`PUT /completeOrder/:id` ينقل الطلب إلى `completed`. لا تستدعِه لطلب `cancelled`.
+
+`DELETE /deleteOrder/:id` يحذف الطلب نهائياً.

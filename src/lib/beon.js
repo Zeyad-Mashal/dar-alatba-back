@@ -23,6 +23,13 @@ export function toWhatsappPhone(value) {
   return `+${digits}`;
 }
 
+function paymentLabel(method) {
+  if (method === "cod") return "الدفع عند الاستلام";
+  if (method === "instapay") return "إنستاباي";
+  if (method === "vodafone") return "فودافون كاش";
+  return "فودافون كاش أو إنستا باي";
+}
+
 function templateValue(value) {
   const text = String(value ?? "")
     .replace(/[\r\n\t]+/g, " ")
@@ -89,8 +96,12 @@ export async function sendOrderWhatsapp(order) {
         order.governorate,
         "غير محددة",
         order.detailedAddress,
-        "فودافون كاش أو إنستا باي",
-        order.transferImage?.url ? "تم رفع الصورة بنجاح" : "بدون صورة",
+        paymentLabel(order.paymentMethod),
+        order.transferImage?.url
+          ? "تم رفع الصورة بنجاح"
+          : order.paymentMethod === "cod"
+            ? "غير مطلوبة"
+            : "بدون صورة",
         lines.join("، "),
         `${total} جنيه`,
       ].map(templateValue),

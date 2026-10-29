@@ -123,6 +123,7 @@ const orderSchema = new mongoose.Schema(
     governorate: { type: String, required: true },
     detailedAddress: { type: String, required: true },
     transferPhone: { type: String, default: "" },
+    paymentMethod: { type: String, enum: ["", "cod", "instapay", "vodafone"], default: "" },
     notes: { type: String, default: "" },
     items: { type: [orderItemSchema], default: [] },
     totalPrice: { type: Number, required: true, min: 0 },
@@ -162,7 +163,8 @@ export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
 if (
   mongoose.models.Order &&
-  !mongoose.models.Order.schema.path("status").enumValues.includes("cancelled")
+  (!mongoose.models.Order.schema.path("paymentMethod") ||
+    !mongoose.models.Order.schema.path("status").enumValues.includes("cancelled"))
 ) {
   mongoose.deleteModel("Order");
 }

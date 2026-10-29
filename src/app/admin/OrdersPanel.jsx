@@ -33,6 +33,13 @@ function formatDate(value) {
   }
 }
 
+function paymentLabel(method) {
+  if (method === "cod") return "الدفع عند الاستلام";
+  if (method === "instapay") return "إنستاباي";
+  if (method === "vodafone") return "فودافون كاش";
+  return "تحويل";
+}
+
 function whatsappLabel(whatsapp) {
   const status =
     whatsapp.status === "sent"
@@ -139,9 +146,15 @@ function OrderCard({ order, onComplete, onDelete, onPreview, completingId, delet
           </h4>
           <ul className="space-y-1.5 text-gray-700">
             <li>
-              <span className="text-gray-500">رقم الهاتف الراسل:</span>{" "}
-              <strong className="text-gray-800">{order.transferPhone}</strong>
+              <span className="text-gray-500">طريقة الدفع:</span>{" "}
+              <strong className="text-gray-800">{paymentLabel(order.paymentMethod)}</strong>
             </li>
+            {order.paymentMethod !== "cod" && (
+              <li>
+                <span className="text-gray-500">رقم الهاتف الراسل:</span>{" "}
+                <strong className="text-gray-800">{order.transferPhone || "—"}</strong>
+              </li>
+            )}
             <li>
               <span className="text-gray-500">إجمالي المنتجات:</span> {productsTotal} ج.م
             </li>

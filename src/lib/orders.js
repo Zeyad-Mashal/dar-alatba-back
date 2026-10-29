@@ -65,6 +65,15 @@ async function restoreStock(holds) {
   }
 }
 
+const PAYMENT_METHODS = new Set(["cod", "instapay", "vodafone"]);
+
+function paymentMethodFrom(value) {
+  const method = textValue(value).toLowerCase();
+  if (!method) return "";
+  if (!PAYMENT_METHODS.has(method)) throw new ApiError("طريقة الدفع غير صالحة");
+  return method;
+}
+
 function readItems(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
@@ -95,6 +104,7 @@ export async function createOrder(fields, files) {
   const detailedAddress = requiredText(fields.detailedAddress, "العنوان", 500);
   const transferPhone = textValue(fields.transferPhone).slice(0, 40);
   const notes = textValue(fields.notes).slice(0, 4000);
+  const paymentMethod = paymentMethodFrom(fields.paymentMethod);
   const rawItems = readItems(fields.items);
 
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
@@ -102,7 +112,9 @@ export async function createOrder(fields, files) {
   }
 
   const receipt = firstFile(files, "transferImage");
-  if (!receipt) throw new ApiError("صورة إيصال التحويل مطلوبة");
+  if (paymentMethod !== "cod" && !receipt) {
+    throw new ApiError("صورة إيصال التحويل مطلوبة");
+  }
 
   const lines = [];
   for (const raw of rawItems) {
@@ -141,7 +153,7 @@ export async function createOrder(fields, files) {
   let transferImage = null;
   let order = null;
   try {
-    transferImage = await uploadImage(receipt, "dar-alatba/orders");
+    if (receipt) transferImage = await uploadImage(receipt, "dar-alatba/orders");
     const totalPrice = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
     order = await Order.create({
       customerName,
@@ -149,6 +161,7 @@ export async function createOrder(fields, files) {
       governorate,
       detailedAddress,
       transferPhone,
+      paymentMethod,
       notes,
       items: lines,
       totalPrice,
