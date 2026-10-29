@@ -179,7 +179,9 @@ export async function createOrder(fields, files) {
 
 export async function listOrders(status) {
   const filter =
-    status === "pending" ? { status: { $in: ["pending", "received"] } } : { status };
+    status === "pending"
+      ? { status: { $in: ["pending", "received", "cancelled"] } }
+      : { status };
   const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(200);
   return orders.map(serialize);
 }
@@ -191,20 +193,26 @@ function phoneMatches(storedPhone, incomingPhone) {
   return stored.endsWith(incoming.slice(-10)) || incoming.endsWith(stored.slice(-10));
 }
 
-export async function markOrderReceived(phone) {
+export async function markOrderReceived(phone, nextStatus = "received") {
   const digits = String(phone || "").replace(/\D/g, "");
   if (digits.length < 8) throw new ApiError("رقم الهاتف غير صالح");
 
-  const orders = await Order.find({ status: { $in: ["pending", "received"] } })
+  const requested = String(nextStatus || "received").trim().toLowerCase();
+  const status = requested === "canceled" || requested === "canceld" ? "cancelled" : requested;
+  if (status !== "received" && status !== "cancelled") {
+    throw new ApiError("الحالة يجب أن تكون received أو cancelled");
+  }
+
+  const orders = await Order.find({ status: { $in: ["pending", "received", "cancelled"] } })
     .sort({ createdAt: -1 })
     .limit(100);
   const order = orders.find((item) => phoneMatches(item.customerPhone, digits));
   if (!order) throw new ApiError("لا يوجد طلب معلّق لهذا الرقم", 404);
 
-  order.status = "received";
+  order.status = status;
   order.whatsapp = {
     ...(order.whatsapp?.toObject?.() || order.whatsapp || {}),
-    reply: "confirmed",
+    reply: status === "cancelled" ? "cancelled" : "confirmed",
     repliedAt: new Date(),
   };
   await order.save();

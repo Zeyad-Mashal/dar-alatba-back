@@ -11,8 +11,15 @@ function phoneFrom(fields, request) {
   return textValue(fields.phone || fields.phoneNumber || fields.customerPhone || queryPhone);
 }
 
+function statusFrom(fields, request) {
+  const queryStatus = new URL(request.url).searchParams.get("status");
+  return textValue(fields.status || queryStatus || "received");
+}
+
 export const GET = handle(async (request) => {
-  return ok(await markOrderReceived(phoneFrom({}, request)), "تم تحديث حالة الطلب");
+  const order = await markOrderReceived(phoneFrom({}, request), statusFrom({}, request));
+  const message = order.status === "cancelled" ? "تم إلغاء الطلب" : "تم تحديث حالة الطلب";
+  return ok(order, message);
 });
 
 export const POST = handle(async (request) => {
@@ -24,5 +31,7 @@ export const POST = handle(async (request) => {
   } else {
     ({ fields } = await readBody(request));
   }
-  return ok(await markOrderReceived(phoneFrom(fields, request)), "تم تحديث حالة الطلب");
+  const order = await markOrderReceived(phoneFrom(fields, request), statusFrom(fields, request));
+  const message = order.status === "cancelled" ? "تم إلغاء الطلب" : "تم تحديث حالة الطلب";
+  return ok(order, message);
 });

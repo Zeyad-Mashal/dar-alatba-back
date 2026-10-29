@@ -127,7 +127,7 @@ const orderSchema = new mongoose.Schema(
     items: { type: [orderItemSchema], default: [] },
     totalPrice: { type: Number, required: true, min: 0 },
     transferImage: { type: imageSchema, default: null },
-    status: { type: String, enum: ["pending", "received", "completed"], default: "pending" },
+    status: { type: String, enum: ["pending", "received", "cancelled", "completed"], default: "pending" },
     completedAt: { type: Date, default: null },
     whatsapp: {
       status: { type: String, default: "" },
@@ -162,7 +162,7 @@ export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
 if (
   mongoose.models.Order &&
-  !mongoose.models.Order.schema.path("status").enumValues.includes("received")
+  !mongoose.models.Order.schema.path("status").enumValues.includes("cancelled")
 ) {
   mongoose.deleteModel("Order");
 }
