@@ -127,7 +127,7 @@ const orderSchema = new mongoose.Schema(
     items: { type: [orderItemSchema], default: [] },
     totalPrice: { type: Number, required: true, min: 0 },
     transferImage: { type: imageSchema, default: null },
-    status: { type: String, enum: ["pending", "completed"], default: "pending" },
+    status: { type: String, enum: ["pending", "received", "completed"], default: "pending" },
     completedAt: { type: Date, default: null },
     whatsapp: {
       status: { type: String, default: "" },
@@ -160,6 +160,12 @@ orderSchema.index({ customerPhone: 1, createdAt: -1 });
 
 export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
+if (
+  mongoose.models.Order &&
+  !mongoose.models.Order.schema.path("status").enumValues.includes("received")
+) {
+  mongoose.deleteModel("Order");
+}
 export const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export const BeonEvent =
   mongoose.models.BeonEvent || mongoose.model("BeonEvent", beonEventSchema);

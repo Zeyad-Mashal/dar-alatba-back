@@ -178,8 +178,43 @@ export async function createOrder(fields, files) {
 }
 
 export async function listOrders(status) {
-  const orders = await Order.find({ status }).sort({ createdAt: -1 }).limit(200);
+  const filter =
+    status === "pending" ? { status: { $in: ["pending", "received"] } } : { status };
+  const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(200);
   return orders.map(serialize);
+}
+
+function phoneMatches(storedPhone, incomingPhone) {
+  const stored = String(storedPhone || "").replace(/\D/g, "");
+  const incoming = String(incomingPhone || "").replace(/\D/g, "");
+  if (stored.length < 8 || incoming.length < 8) return false;
+  return stored.endsWith(incoming.slice(-10)) || incoming.endsWith(stored.slice(-10));
+}
+
+export async function markOrderReceived(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length < 8) throw new ApiError("رقم الهاتف غير صالح");
+
+  const orders = await Order.find({ status: { $in: ["pending", "received"] } })
+    .sort({ createdAt: -1 })
+    .limit(100);
+  const order = orders.find((item) => phoneMatches(item.customerPhone, digits));
+  if (!order) throw new ApiError("لا يوجد طلب معلّق لهذا الرقم", 404);
+
+  order.status = "received";
+  order.whatsapp = {
+    ...(order.whatsapp?.toObject?.() || order.whatsapp || {}),
+    reply: "confirmed",
+    repliedAt: new Date(),
+  };
+  await order.save();
+
+  return {
+    _id: String(order._id),
+    status: order.status,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+  };
 }
 
 export async function completeOrder(id) {

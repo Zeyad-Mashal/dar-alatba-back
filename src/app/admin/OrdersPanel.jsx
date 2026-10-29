@@ -63,6 +63,7 @@ function OrderCard({ order, onComplete, onDelete, onPreview, completingId, delet
   const deposit = 100;
   const remaining = Math.max(total - deposit, 0);
   const isCompleted = order.status === "completed";
+  const isReceived = order.status === "received";
   const receiptUrl = order.transferImage?.url;
   const isBusy = completingId === order._id || deletingId === order._id;
 
@@ -81,10 +82,12 @@ function OrderCard({ order, onComplete, onDelete, onPreview, completingId, delet
           className={`px-3 py-1 rounded-full text-xs font-bold font-sans ${
             isCompleted
               ? "text-emerald-700 bg-emerald-50"
-              : "text-amber-700 bg-amber-50"
+              : isReceived
+                ? "text-sky-700 bg-sky-50"
+                : "text-amber-700 bg-amber-50"
           }`}
         >
-          {isCompleted ? "مكتمل" : "قيد المراجعة"}
+          {isCompleted ? "مكتمل" : isReceived ? "تم التأكيد" : "قيد المراجعة"}
         </span>
       </div>
 
