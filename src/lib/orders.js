@@ -270,6 +270,10 @@ export async function applyWhatsappReply(phones, reply) {
   });
   if (!order) return null;
 
+  const nextStatus = reply === "cancelled" ? "cancelled" : reply === "confirmed" ? "received" : "";
+  if (nextStatus && order.status !== "completed") {
+    order.status = nextStatus;
+  }
   order.whatsapp = {
     ...(order.whatsapp?.toObject?.() || order.whatsapp || {}),
     reply,
