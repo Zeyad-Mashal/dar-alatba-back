@@ -76,13 +76,9 @@ export async function verifyBeonConnection() {
 
 export async function sendOrderWhatsapp(order) {
   const phoneNumber = toWhatsappPhone(order.customerPhone);
-  const shipping = 100;
-  const productsTotal = Number(order.totalPrice || 0);
-  const total = productsTotal + shipping;
-  const lines = (order.items || []).map((item) => {
-    const variant = [item.sizeName, item.colorName].filter(Boolean).join(" / ");
-    return `${item.name} × ${item.quantity}${variant ? ` (${variant})` : ""}`;
-  });
+  const total = Number(order.payableTotal || order.totalPrice || 0);
+  const lines = (order.items || []).map((item) => `${item.name} × ${item.quantity}`);
+  if (order.embroideryNote) lines.push(`تطريز: ${order.embroideryNote}`);
 
   const json = await beonFetch("/partner/messages/whatsapp/template", {
     method: "POST",

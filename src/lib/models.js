@@ -65,14 +65,32 @@ const variantSchema = new mongoose.Schema(
   { _id: true },
 );
 
+const detailTextSchema = new mongoose.Schema(
+  {
+    ar: { type: String, default: "" },
+    en: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const productSchema = new mongoose.Schema(
   {
     nameAr: { type: String, required: true, trim: true },
     nameEn: { type: String, required: true, trim: true },
     descriptionAr: { type: String, required: true, trim: true },
     descriptionEn: { type: String, required: true, trim: true },
+    brandAr: { type: String, default: "" },
+    brandEn: { type: String, default: "" },
+    isSet: { type: Boolean, default: false },
     price: { type: Number, required: true, min: 0 },
+    compareAtPrice: { type: Number, default: 0, min: 0 },
     stock: { type: Number, required: true, min: 0, default: 0 },
+    details: {
+      pockets: { type: detailTextSchema, default: () => ({}) },
+      elastic: { type: detailTextSchema, default: () => ({}) },
+      neckline: { type: detailTextSchema, default: () => ({}) },
+      fabric: { type: detailTextSchema, default: () => ({}) },
+    },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -112,6 +130,8 @@ const orderItemSchema = new mongoose.Schema(
     colorId: { type: String, default: "" },
     sizeName: { type: String, default: "" },
     colorName: { type: String, default: "" },
+    pantsSizeId: { type: String, default: "" },
+    pantsSizeName: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -126,7 +146,13 @@ const orderSchema = new mongoose.Schema(
     paymentMethod: { type: String, enum: ["", "cod", "instapay", "vodafone"], default: "" },
     notes: { type: String, default: "" },
     items: { type: [orderItemSchema], default: [] },
+    productsTotal: { type: Number, default: 0, min: 0 },
+    shippingFee: { type: Number, default: 0, min: 0 },
+    embroideryNote: { type: String, default: "" },
+    embroideryPrice: { type: Number, default: 0, min: 0 },
+    payableTotal: { type: Number, default: 0, min: 0 },
     totalPrice: { type: Number, required: true, min: 0 },
+    stockRestored: { type: Boolean, default: false },
     transferImage: { type: imageSchema, default: null },
     status: { type: String, enum: ["pending", "received", "cancelled", "completed"], default: "pending" },
     completedAt: { type: Date, default: null },
@@ -159,11 +185,15 @@ const beonEventSchema = new mongoose.Schema(
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ customerPhone: 1, createdAt: -1 });
 
+if (mongoose.models.Product && !mongoose.models.Product.schema.path("brandAr")) {
+  mongoose.deleteModel("Product");
+}
 export const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
 if (
   mongoose.models.Order &&
   (!mongoose.models.Order.schema.path("paymentMethod") ||
+    !mongoose.models.Order.schema.path("stockRestored") ||
     !mongoose.models.Order.schema.path("status").enumValues.includes("cancelled"))
 ) {
   mongoose.deleteModel("Order");

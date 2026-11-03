@@ -4,6 +4,7 @@ import { sendOrderWhatsapp } from "./beon";
 import { deleteImage, uploadImage } from "./cloudinary";
 import { ApiError } from "./http";
 import { Order, Product } from "./models";
+import { STORE, shippingFeeFor } from "./store";
 
 function assertObjectId(value, label) {
   const id = textValue(value);
@@ -47,6 +48,42 @@ async function takeStock(productId, sizeId, colorId, quantity) {
   );
   if (!updated.modifiedCount) throw new ApiError("الكمية المطلوبة غير متوفرة", 400);
   return { productId: product._id, variantId: null, quantity };
+}
+
+async function giveBack(productId, sizeId, colorId, quantity) {
+  const product = await Product.findById(productId);
+  if (!product || !quantity) return;
+  const variants = product.variants || [];
+  const variant =
+    variants.find((item) => sameOption(item.size, sizeId) && sameOption(item.color, colorId)) ||
+    variants.find((item) => sameOption(item.size, sizeId) && !item.color);
+  if (variant) {
+    await Product.updateOne(
+      { _id: product._id, "variants._id": variant._id },
+      { $inc: { "variants.$.stock": quantity, stock: quantity } },
+    );
+    return;
+  }
+  await Product.updateOne({ _id: product._id }, { $inc: { stock: quantity } });
+}
+
+async function restoreOrderStock(order) {
+  if (!order || order.stockRestored) return;
+  for (const line of order.items || []) {
+    if (!line.product || !line.quantity) continue;
+    await giveBack(line.product, line.sizeId, line.colorId, line.quantity);
+    if (line.pantsSizeId && !sameOption(line.pantsSizeId, line.sizeId)) {
+      await giveBack(line.product, line.pantsSizeId, line.colorId, line.quantity);
+    }
+  }
+  order.stockRestored = true;
+}
+
+function embroideryNoteFrom(fields, notes) {
+  const direct = textValue(fields.embroidery || fields.embroideryNote).slice(0, 200);
+  if (direct) return direct;
+  const match = String(notes || "").match(/تطريز:\s*(.+)/);
+  return match ? match[1].trim().slice(0, 200) : "";
 }
 
 async function restoreStock(holds) {
@@ -126,7 +163,12 @@ export async function createOrder(fields, files) {
     const product = await Product.findById(productId);
     if (!product) throw new ApiError("أحد المنتجات غير موجود", 404);
 
-    const variant = [textValue(raw.sizeName), textValue(raw.colorName)].filter(Boolean).join(" / ");
+    const topName = textValue(raw.topSizeName || raw.sizeName);
+    const pantsName = textValue(raw.pantsSizeName);
+    const pantsId = textValue(raw.pantsSizeId);
+    const sizeLabel =
+      pantsName && pantsName !== topName ? `توب ${topName} / بنطلون ${pantsName}` : topName;
+    const variant = [sizeLabel, textValue(raw.colorName)].filter(Boolean).join(" / ");
     lines.push({
       product: product._id,
       name: variant ? `${product.nameAr} (${variant})` : product.nameAr,
@@ -135,8 +177,10 @@ export async function createOrder(fields, files) {
       image: product.images?.[0]?.url || "",
       sizeId: textValue(raw.sizeId),
       colorId: textValue(raw.colorId),
-      sizeName: textValue(raw.sizeName),
+      sizeName: sizeLabel,
       colorName: textValue(raw.colorName),
+      pantsSizeId: pantsId,
+      pantsSizeName: pantsName,
     });
   }
 
@@ -144,6 +188,9 @@ export async function createOrder(fields, files) {
   try {
     for (const line of lines) {
       holds.push(await takeStock(line.product, line.sizeId, line.colorId, line.quantity));
+      if (line.pantsSizeId && !sameOption(line.pantsSizeId, line.sizeId)) {
+        holds.push(await takeStock(line.product, line.pantsSizeId, line.colorId, line.quantity));
+      }
     }
   } catch (error) {
     await restoreStock(holds);
@@ -154,7 +201,11 @@ export async function createOrder(fields, files) {
   let order = null;
   try {
     if (receipt) transferImage = await uploadImage(receipt, "dar-alatba/orders");
-    const totalPrice = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+    const productsTotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+    const shippingFee = shippingFeeFor(productsTotal);
+    const embroideryNote = embroideryNoteFrom(fields, notes);
+    const embroideryPrice = embroideryNote ? STORE.embroideryPrice : 0;
+    const payableTotal = productsTotal + shippingFee + embroideryPrice;
     order = await Order.create({
       customerName,
       customerPhone,
@@ -163,8 +214,13 @@ export async function createOrder(fields, files) {
       transferPhone,
       paymentMethod,
       notes,
+      embroideryNote,
+      embroideryPrice,
       items: lines,
-      totalPrice,
+      productsTotal,
+      shippingFee,
+      payableTotal,
+      totalPrice: payableTotal,
       transferImage,
       status: "pending",
       whatsapp: { status: "pending" },
@@ -222,6 +278,9 @@ export async function markOrderReceived(phone, nextStatus = "received") {
   const order = orders.find((item) => phoneMatches(item.customerPhone, digits));
   if (!order) throw new ApiError("لا يوجد طلب معلّق لهذا الرقم", 404);
 
+  if (status === "cancelled" && order.status !== "cancelled") {
+    await restoreOrderStock(order);
+  }
   order.status = status;
   order.whatsapp = {
     ...(order.whatsapp?.toObject?.() || order.whatsapp || {}),
@@ -250,6 +309,7 @@ export async function completeOrder(id) {
 export async function deleteOrder(id) {
   const order = await Order.findById(assertObjectId(id, "الطلب"));
   if (!order) throw new ApiError("الطلب غير موجود", 404);
+  await restoreOrderStock(order);
   await deleteImage(order.transferImage?.public_id);
   await order.deleteOne();
   return { _id: String(order._id) };
@@ -272,6 +332,9 @@ export async function applyWhatsappReply(phones, reply) {
 
   const nextStatus = reply === "cancelled" ? "cancelled" : reply === "confirmed" ? "received" : "";
   if (nextStatus && order.status !== "completed") {
+    if (nextStatus === "cancelled" && order.status !== "cancelled") {
+      await restoreOrderStock(order);
+    }
     order.status = nextStatus;
   }
   order.whatsapp = {

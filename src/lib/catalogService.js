@@ -35,6 +35,33 @@ function assertObjectId(value, label) {
   return id;
 }
 
+function detailText(value) {
+  return { ar: value?.ar || "", en: value?.en || "" };
+}
+
+function described(product, lang) {
+  const base = lang === "en" ? product.descriptionEn : product.descriptionAr;
+  const details = product.details || {};
+  const rows = [
+    ["pockets", "عدد الجيوب", "Pockets"],
+    ["elastic", "نوع الاستك", "Elastic"],
+    ["neckline", "فتحة الرقبة", "Neckline"],
+    ["fabric", "نوع القماش", "Fabric"],
+  ];
+  const extra = rows
+    .map(([key, ar, en]) => {
+      const value = lang === "en" ? details[key]?.en : details[key]?.ar;
+      return value ? `${lang === "en" ? en : ar}: ${value}` : "";
+    })
+    .filter(Boolean);
+  return [base, ...extra].filter(Boolean).join("\n");
+}
+
+function keptText(fields, key, fallback = "", max = 160) {
+  if (fields[key] === undefined || fields[key] === null) return fallback;
+  return textValue(fields[key]).slice(0, max);
+}
+
 function serializeImage(image) {
   if (!image?.url) return null;
   return { url: image.url, public_id: image.public_id };
@@ -131,10 +158,24 @@ function serializeProduct(product) {
     name: product.nameAr,
     nameAr: product.nameAr,
     nameEn: product.nameEn,
-    description: product.descriptionAr,
-    descriptionAr: product.descriptionAr,
-    descriptionEn: product.descriptionEn,
+    description: described(product, "ar"),
+    descriptionAr: described(product, "ar"),
+    descriptionEn: described(product, "en"),
+    brandAr: product.brandAr || "",
+    brandEn: product.brandEn || "",
+    isSet: product.isSet === true,
     price: product.price,
+    compareAtPrice: product.compareAtPrice > product.price ? product.compareAtPrice : null,
+    discountPercent:
+      product.compareAtPrice > product.price
+        ? Math.round((1 - product.price / product.compareAtPrice) * 100)
+        : 0,
+    details: {
+      pockets: detailText(product.details?.pockets),
+      elastic: detailText(product.details?.elastic),
+      neckline: detailText(product.details?.neckline),
+      fabric: detailText(product.details?.fabric),
+    },
     stock: product.stock ?? 0,
     isActive: product.isActive !== false,
     category,
@@ -442,10 +483,43 @@ async function productPayload(fields, files, current) {
   }
   if (!images.length) throw new ApiError("يجب رفع صورة واحدة على الأقل للمنتج");
 
+  const currentDetails = current?.details || {};
+  const details = {
+    pockets: {
+      ar: keptText(fields, "pocketsAr", currentDetails.pockets?.ar || ""),
+      en: keptText(fields, "pocketsEn", currentDetails.pockets?.en || ""),
+    },
+    elastic: {
+      ar: keptText(fields, "elasticAr", currentDetails.elastic?.ar || ""),
+      en: keptText(fields, "elasticEn", currentDetails.elastic?.en || ""),
+    },
+    neckline: {
+      ar: keptText(fields, "necklineAr", currentDetails.neckline?.ar || ""),
+      en: keptText(fields, "necklineEn", currentDetails.neckline?.en || ""),
+    },
+    fabric: {
+      ar: keptText(fields, "fabricAr", currentDetails.fabric?.ar || ""),
+      en: keptText(fields, "fabricEn", currentDetails.fabric?.en || ""),
+    },
+  };
+  const compareRaw = textValue(fields.compareAtPrice);
+  const compareAtPrice =
+    fields.compareAtPrice === undefined || compareRaw === ""
+      ? Number(current?.compareAtPrice) || 0
+      : parsePrice(fields.compareAtPrice);
+
   return {
     ...names,
     ...descriptions,
+    brandAr: keptText(fields, "brandAr", current?.brandAr || "", 80),
+    brandEn: keptText(fields, "brandEn", current?.brandEn || "", 80),
+    isSet:
+      fields.isSet === undefined
+        ? Boolean(current?.isSet)
+        : parseBoolean(fields.isSet, false),
     price: parsePrice(fields.price),
+    compareAtPrice,
+    details,
     stock: matrix.stock,
     category: category._id,
     isActive: parseBoolean(fields.isActive, true),
