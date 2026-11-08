@@ -119,9 +119,12 @@ async function apiRequest(path, options) {
   },
   "isMain": false,
   "isActive": true,
-  "image": { "url": "...", "public_id": "..." }
+  "image": { "url": "...", "public_id": "..." },
+  "sizeChart": { "url": "...", "public_id": "..." }
 }
 ```
+
+`sizeChart` موجود للقسم الفرعي فقط. لو المنتج مربوط بقسم فرعي، المنتج كمان بيرجع `sizeChart` بنفس الصورة عشان تظهر في صفحة المنتج. القسم الرئيسي بيرجع `sizeChart: null`.
 
 فصلهم في الفرونت:
 
@@ -152,6 +155,8 @@ const subsOf = (mainId) =>
 | `parent` | لا | فاضي = قسم رئيسي. غير فاضي = `_id` القسم الرئيسي |
 | `isActive` | لا | `"true"` أو `"false"`. الافتراضي نشط |
 | `image` | نعم عند الإضافة | ملف صورة، حد أقصى 8 ميجا |
+| `sizeChart` | لا | صورة جدول المقاسات. للقسم الفرعي فقط |
+| `clearSizeChart` | لا | `"true"` لمسح جدول المقاسات عند التعديل |
 
 ```js
 const form = new FormData();
@@ -162,6 +167,8 @@ form.append("descriptionEn", "Clothes section");
 form.append("parent", ""); // أو MAIN_ID للقسم الفرعي
 form.append("isActive", "true");
 form.append("image", file);
+// للقسم الفرعي فقط:
+// form.append("sizeChart", sizeChartFile);
 
 await apiRequest("/addCategory", { method: "POST", body: form });
 ```
@@ -171,7 +178,7 @@ await apiRequest("/addCategory", { method: "POST", body: form });
 ### تعديل قسم
 
 `PUT /updateCategory/:id`  
-نفس الحقول. `image` اختياري؛ لو لم تُرسل تبقى الصورة القديمة. الصورة القديمة مطلوبة أن تكون موجودة من قبل.
+نفس الحقول. `image` اختياري؛ لو لم تُرسل تبقى الصورة القديمة. الصورة القديمة مطلوبة أن تكون موجودة من قبل. `sizeChart` اختياري للقسم الفرعي، و`clearSizeChart=true` بيمسح الجدول.
 
 ### حذف قسم
 

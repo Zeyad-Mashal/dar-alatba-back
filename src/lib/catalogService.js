@@ -14,7 +14,7 @@ import { Category, Color, Product, Size } from "./models";
 const productPopulate = [
   {
     path: "category",
-    select: "nameAr nameEn descriptionAr descriptionEn parent isActive image",
+    select: "nameAr nameEn descriptionAr descriptionEn parent isActive image sizeChart",
     populate: { path: "parent", select: "nameAr nameEn isActive" },
   },
   { path: "colors", select: "nameAr nameEn hex isActive" },
@@ -62,6 +62,23 @@ function keptText(fields, key, fallback = "", max = 160) {
   return textValue(fields[key]).slice(0, max);
 }
 
+function resolveKeepImages(fields, currentImages, hasIncoming) {
+  const current = Array.isArray(currentImages) ? currentImages : [];
+  if (!current.length) return [];
+  if (fields.keepImages === undefined || fields.keepImages === null) {
+    return hasIncoming ? [] : current;
+  }
+  let ids = [];
+  try {
+    ids = JSON.parse(String(fields.keepImages || "[]"));
+  } catch {
+    ids = [];
+  }
+  if (!Array.isArray(ids)) ids = [];
+  const idSet = new Set(ids.map(String).filter(Boolean));
+  return current.filter((image) => idSet.has(String(image.public_id)));
+}
+
 function serializeImage(image) {
   if (!image?.url) return null;
   return { url: image.url, public_id: image.public_id };
@@ -96,6 +113,7 @@ function serializeCategory(category) {
     isMain: !category.parent,
     isActive: category.isActive !== false,
     image: serializeImage(category.image),
+    sizeChart: category.parent ? serializeImage(category.sizeChart) : null,
     createdAt: category.createdAt,
     updatedAt: category.updatedAt,
   };
@@ -180,6 +198,8 @@ function serializeProduct(product) {
     isActive: product.isActive !== false,
     category,
     categoryPath: typeof category === "object" ? categoryPath(product.category) : "",
+    sizeChart:
+      typeof category === "object" && category.parent ? category.sizeChart || null : null,
     images: (product.images || []).map(serializeImage).filter(Boolean),
     colors,
     sizes,
@@ -379,12 +399,19 @@ export async function addCategory(fields, files) {
   if (!imageFile) throw new ApiError("صورة القسم مطلوبة");
 
   const image = await uploadImage(imageFile, "dar-alatba/categories");
+  let sizeChart = null;
+  const sizeChartFile = firstFile(files, "sizeChart");
+  if (parent && sizeChartFile) {
+    sizeChart = await uploadImage(sizeChartFile, "dar-alatba/size-charts");
+  }
+
   const category = await Category.create({
     ...names,
     ...descriptions,
     parent,
     isActive: parseBoolean(fields.isActive, true),
     image,
+    sizeChart,
   });
   await category.populate("parent", "nameAr nameEn isActive");
   return serializeCategory(category);
@@ -409,12 +436,30 @@ export async function updateCategory(id, fields, files) {
   }
   if (!image?.url) throw new ApiError("صورة القسم مطلوبة");
 
+  let sizeChart = category.sizeChart || null;
+  if (!parent) {
+    if (sizeChart?.public_id) await deleteImage(sizeChart.public_id);
+    sizeChart = null;
+  } else {
+    const sizeChartFile = firstFile(files, "sizeChart");
+    const clearSizeChart = parseBoolean(fields.clearSizeChart, false);
+    if (sizeChartFile) {
+      const uploaded = await uploadImage(sizeChartFile, "dar-alatba/size-charts");
+      await deleteImage(sizeChart?.public_id);
+      sizeChart = uploaded;
+    } else if (clearSizeChart) {
+      await deleteImage(sizeChart?.public_id);
+      sizeChart = null;
+    }
+  }
+
   category.set({
     ...names,
     ...descriptions,
     parent,
     isActive: parseBoolean(fields.isActive, category.isActive),
     image,
+    sizeChart,
   });
   await category.save();
   await category.populate("parent", "nameAr nameEn isActive");
@@ -437,7 +482,10 @@ export async function removeCategory(id) {
   );
   await Product.deleteMany({ category: { $in: ids } });
   await Promise.all(
-    [category, ...children].map((item) => deleteImage(item.image?.public_id)),
+    [category, ...children].flatMap((item) => [
+      deleteImage(item.image?.public_id),
+      deleteImage(item.sizeChart?.public_id),
+    ]),
   );
   await Category.deleteMany({ _id: { $in: ids } });
   return { deletedProducts: products.length, deletedCategories: ids.length };
@@ -467,21 +515,24 @@ async function productPayload(fields, files, current) {
   await assertOptionsExist(matrix.colorIds, matrix.sizeIds);
 
   const incomingImages = fileList(files, "images");
-  if (incomingImages.length > 5) throw new ApiError("يمكنك رفع 5 صور كحد أقصى");
-
-  let images = current?.images || [];
-  if (!current || incomingImages.length > 0) {
-    if (incomingImages.length === 0) throw new ApiError("يجب رفع صورة واحدة على الأقل للمنتج");
-    const uploaded = [];
-    for (const file of incomingImages) {
-      uploaded.push(await uploadImage(file, "dar-alatba/products"));
-    }
-    if (current) {
-      await Promise.all((current.images || []).map((image) => deleteImage(image.public_id)));
-    }
-    images = uploaded;
+  const currentImages = current?.images || [];
+  const keepImages = resolveKeepImages(fields, currentImages, incomingImages.length > 0);
+  if (keepImages.length + incomingImages.length > 5) {
+    throw new ApiError("يمكنك رفع 5 صور كحد أقصى");
   }
-  if (!images.length) throw new ApiError("يجب رفع صورة واحدة على الأقل للمنتج");
+  if (keepImages.length + incomingImages.length === 0) {
+    throw new ApiError("يجب رفع صورة واحدة على الأقل للمنتج");
+  }
+
+  const uploaded = [];
+  for (const file of incomingImages) {
+    uploaded.push(await uploadImage(file, "dar-alatba/products"));
+  }
+
+  const keepIds = new Set(keepImages.map((image) => String(image.public_id)));
+  const removed = currentImages.filter((image) => !keepIds.has(String(image.public_id)));
+  await Promise.all(removed.map((image) => deleteImage(image.public_id)));
+  const images = [...keepImages, ...uploaded];
 
   const currentDetails = current?.details || {};
   const details = {

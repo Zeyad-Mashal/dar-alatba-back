@@ -21,9 +21,14 @@ const categorySchema = new mongoose.Schema(
     },
     isActive: { type: Boolean, default: true },
     image: { type: imageSchema, default: null },
+    sizeChart: { type: imageSchema, default: null },
   },
   { timestamps: true },
 );
+
+if (mongoose.models.Category && !mongoose.models.Category.schema.path("sizeChart")) {
+  mongoose.deleteModel("Category");
+}
 
 const colorSchema = new mongoose.Schema(
   {

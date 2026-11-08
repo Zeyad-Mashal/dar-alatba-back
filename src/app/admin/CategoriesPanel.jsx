@@ -13,6 +13,8 @@ const EMPTY_CATEGORY = {
   parent: "",
   isActive: true,
   image: null,
+  sizeChart: null,
+  clearSizeChart: false,
 };
 
 async function apiRequest(path, options) {
@@ -101,6 +103,8 @@ export default function CategoriesPanel() {
       parent: parentIdOf(category) || "",
       isActive: category.isActive !== false,
       image: null,
+      sizeChart: null,
+      clearSizeChart: false,
     });
     setEditingCategory(category);
   };
@@ -128,7 +132,9 @@ export default function CategoriesPanel() {
     formData.append("descriptionEn", categoryForm.descriptionEn.trim());
     formData.append("parent", categoryForm.parent);
     formData.append("isActive", String(categoryForm.isActive));
+    formData.append("clearSizeChart", String(Boolean(categoryForm.clearSizeChart)));
     if (categoryForm.image) formData.append("image", categoryForm.image);
+    if (categoryForm.sizeChart) formData.append("sizeChart", categoryForm.sizeChart);
 
     setIsSaving(true);
     setError("");
@@ -397,6 +403,50 @@ export default function CategoriesPanel() {
                   required={editingCategory === "new"}
                 />
               </label>
+
+              {categoryForm.parent ? (
+                <label className="modal-input-group">
+                  <span className="modal-label">جدول المقاسات (اختياري)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      setCategoryForm((current) => ({
+                        ...current,
+                        sizeChart: event.target.files?.[0] || null,
+                        clearSizeChart: false,
+                      }))
+                    }
+                    className="modal-file-input"
+                  />
+                  <small className="product-images-hint">
+                    الصورة هتظهر في كل منتجات القسم الفرعي ده فقط.
+                  </small>
+                  {editingCategory !== "new" && editingCategory?.sizeChart?.url ? (
+                    <>
+                      <img
+                        src={editingCategory.sizeChart.url}
+                        alt=""
+                        style={{ marginTop: 8, maxHeight: 160, objectFit: "contain" }}
+                      />
+                      <label className="admin-checkbox-row" style={{ marginTop: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={categoryForm.clearSizeChart}
+                          onChange={(event) =>
+                            setCategoryForm((current) => ({
+                              ...current,
+                              clearSizeChart: event.target.checked,
+                              sizeChart: event.target.checked ? null : current.sizeChart,
+                            }))
+                          }
+                        />
+                        <span>مسح جدول المقاسات</span>
+                      </label>
+                    </>
+                  ) : null}
+                </label>
+              ) : null}
 
               <label className="admin-checkbox-row">
                 <input
