@@ -119,6 +119,26 @@ if (mongoose.models.Announcement && !mongoose.models.Announcement.schema.path("t
 export const Announcement =
   mongoose.models.Announcement ||
   mongoose.model("Announcement", announcementSchema);
+
+const policySchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      required: true,
+      unique: true,
+      enum: ["privacy", "returns"],
+    },
+    titleAr: { type: String, required: true, default: "" },
+    titleEn: { type: String, required: true, default: "" },
+    contentAr: { type: String, required: true, default: "" },
+    contentEn: { type: String, required: true, default: "" },
+  },
+  { timestamps: true },
+);
+
+export const Policy =
+  mongoose.models.Policy || mongoose.model("Policy", policySchema);
+
 const orderItemSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", default: null },

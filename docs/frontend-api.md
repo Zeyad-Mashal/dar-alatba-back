@@ -577,6 +577,10 @@ const lineId = hasVariant
 | الطلبات المكتملة | GET | `/getCompletedOrders` | — |
 | إكمال طلب | PUT | `/completeOrder/:id` | — |
 | حذف طلب | DELETE | `/deleteOrder/:id` | — |
+| سياسة الخصوصية | GET | `/getPrivacyPolicy` | — |
+| تحديث الخصوصية | PUT | `/updatePrivacyPolicy` | JSON |
+| سياسة الاسترجاع | GET | `/getReturnsPolicy` | — |
+| تحديث الاسترجاع | PUT | `/updateReturnsPolicy` | JSON |
 
 ## 12. شريط العروض
 
@@ -715,3 +719,40 @@ const line = items.map((item) => (english ? item.textEn : item.textAr)).join("")
 `PUT /completeOrder/:id` ينقل الطلب إلى `completed`. لا تستدعِه لطلب `cancelled`.
 
 `DELETE /deleteOrder/:id` يحذف الطلب نهائياً.
+
+## 14. سياسات الخصوصية والاسترجاع
+
+كل سياسة كائن واحد ثابت، مش قائمة. المحتوى يُحفظ ويُرجع كما كُتب حرفيًا (مسافات وأسطر جديدة). في العرض استخدم `white-space: pre-wrap`.
+
+```txt
+GET  /getPrivacyPolicy
+PUT  /updatePrivacyPolicy
+GET  /getReturnsPolicy
+PUT  /updateReturnsPolicy
+```
+
+شكل الرد:
+
+```json
+{
+  "_id": "ID",
+  "key": "privacy",
+  "titleAr": "سياسة الخصوصية",
+  "titleEn": "Privacy Policy",
+  "contentAr": "النص العربي\nسطر تاني",
+  "contentEn": "English text\nsecond line"
+}
+```
+
+للتحديث أرسل JSON:
+
+```json
+{
+  "titleAr": "سياسة الخصوصية",
+  "titleEn": "Privacy Policy",
+  "contentAr": "النص كما تريد ظهوره",
+  "contentEn": "Exact English content"
+}
+```
+
+لو السياسة مش موجودة أول مرة، الـ GET بينشئ نسخة افتراضية. على صفحة عربي اعرض `titleAr` و`contentAr`، وعلى إنجليزي `titleEn` و`contentEn`.
