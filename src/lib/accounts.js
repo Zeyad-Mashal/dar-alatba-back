@@ -167,3 +167,24 @@ export async function resetPassword(fields) {
   await customer.save();
   return publicCustomer(customer, token);
 }
+
+export async function listCustomers() {
+  const rows = await Customer.find({})
+    .select("name email phone favorites createdAt updatedAt")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return rows.map((customer) => {
+    const favorites = Array.isArray(customer.favorites) ? customer.favorites : [];
+    return {
+      _id: String(customer._id),
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone || "",
+      favorites,
+      favoritesCount: favorites.length,
+      createdAt: customer.createdAt,
+      updatedAt: customer.updatedAt,
+    };
+  });
+}

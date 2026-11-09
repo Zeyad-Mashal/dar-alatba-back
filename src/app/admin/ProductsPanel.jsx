@@ -236,11 +236,6 @@ export default function ProductsPanel({ onCountChange }) {
 
   const handleImagesChange = (event) => {
     const selectedImages = Array.from(event.target.files || []);
-    if (form.images.length + selectedImages.length > 5) {
-      setError("يمكنك رفع 5 صور كحد أقصى");
-      event.target.value = "";
-      return;
-    }
     setError("");
     setForm((current) => ({
       ...current,
@@ -808,14 +803,13 @@ export default function ProductsPanel({ onCountChange }) {
               )}
 
               <label className="modal-input-group">
-                <span className="modal-label">صور المنتج * ({form.images.length}/5)</span>
+                <span className="modal-label">صور المنتج * ({form.images.length})</span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleImagesChange}
                   className="modal-file-input"
-                  disabled={form.images.length >= 5}
                 />
               </label>
               {form.images.length > 0 && (

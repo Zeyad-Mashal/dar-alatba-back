@@ -517,9 +517,6 @@ async function productPayload(fields, files, current) {
   const incomingImages = fileList(files, "images");
   const currentImages = current?.images || [];
   const keepImages = resolveKeepImages(fields, currentImages, incomingImages.length > 0);
-  if (keepImages.length + incomingImages.length > 5) {
-    throw new ApiError("يمكنك رفع 5 صور كحد أقصى");
-  }
   if (keepImages.length + incomingImages.length === 0) {
     throw new ApiError("يجب رفع صورة واحدة على الأقل للمنتج");
   }
