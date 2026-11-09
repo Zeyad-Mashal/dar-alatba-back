@@ -226,3 +226,20 @@ if (
 export const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export const BeonEvent =
   mongoose.models.BeonEvent || mongoose.model("BeonEvent", beonEventSchema);
+
+const customerSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    phone: { type: String, default: "", trim: true },
+    passwordHash: { type: String, required: true },
+    favorites: { type: [String], default: [] },
+    sessionTokenHash: { type: String, default: null, index: true },
+    resetCodeHash: { type: String, default: null },
+    resetExpires: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+
+export const Customer =
+  mongoose.models.Customer || mongoose.model("Customer", customerSchema);
