@@ -40,24 +40,11 @@ function detailText(value) {
 }
 
 function described(product, lang) {
-  const base = lang === "en" ? product.descriptionEn : product.descriptionAr;
-  const details = product.details || {};
-  const rows = [
-    ["pockets", "عدد الجيوب", "Pockets"],
-    ["elastic", "نوع الاستك", "Elastic"],
-    ["neckline", "فتحة الرقبة", "Neckline"],
-    ["fabric", "نوع القماش", "Fabric"],
-  ];
-  const extra = rows
-    .map(([key, ar, en]) => {
-      const value = lang === "en" ? details[key]?.en : details[key]?.ar;
-      return value ? `${lang === "en" ? en : ar}: ${value}` : "";
-    })
-    .filter(Boolean);
-  return [base, ...extra].filter(Boolean).join("\n");
+  // Keep description plain. Details/material render separately on the storefront.
+  return (lang === "en" ? product.descriptionEn : product.descriptionAr) || "";
 }
 
-function keptText(fields, key, fallback = "", max = 160) {
+function keptText(fields, key, fallback = "", max = 2000) {
   if (fields[key] === undefined || fields[key] === null) return fallback;
   return textValue(fields[key]).slice(0, max);
 }
