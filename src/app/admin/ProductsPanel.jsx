@@ -695,19 +695,14 @@ export default function ProductsPanel({ onCountChange }) {
                     required
                   >
                     <option value="">اختر القسم</option>
-                    {mainCategories.map((main) => {
-                      const subs = categories.filter((category) => parentIdOf(category) === main._id);
-                      return (
-                        <optgroup key={main._id} label={main.nameAr || main.name}>
-                          <option value={main._id}>{main.nameAr || main.name} — رئيسي</option>
-                          {subs.map((sub) => (
-                            <option key={sub._id} value={sub._id}>
-                              {sub.nameAr || sub.name} — فرعي
-                            </option>
-                          ))}
-                        </optgroup>
-                      );
-                    })}
+                    {[...categories]
+                      .sort((a, b) => String(a.path || a.nameAr || "").localeCompare(String(b.path || b.nameAr || ""), "ar"))
+                      .map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.path || category.nameAr || category.name}
+                          {category.depth ? ` — طبقة ${category.depth}/4` : ""}
+                        </option>
+                      ))}
                   </select>
                 </label>
                 {!usesMatrix && (

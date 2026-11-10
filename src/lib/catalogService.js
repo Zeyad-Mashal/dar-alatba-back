@@ -71,15 +71,95 @@ function serializeImage(image) {
   return { url: image.url, public_id: image.public_id };
 }
 
-function serializeCategory(category) {
+const MAX_CATEGORY_DEPTH = 4;
+
+function parentRefId(category) {
+  if (!category?.parent) return null;
+  if (typeof category.parent === "object") {
+    return category.parent._id ? String(category.parent._id) : null;
+  }
+  return String(category.parent);
+}
+
+function buildCategoryMap(categories) {
+  return new Map((categories || []).map((category) => [String(category._id), category]));
+}
+
+function categoryDepth(categoryId, byId) {
+  let depth = 0;
+  let current = byId.get(String(categoryId));
+  const seen = new Set();
+  while (current) {
+    depth += 1;
+    const parentId = parentRefId(current);
+    if (!parentId || seen.has(parentId)) break;
+    seen.add(parentId);
+    current = byId.get(parentId);
+  }
+  return depth || 1;
+}
+
+function categoryPathNames(categoryId, byId, field = "nameAr") {
+  const parts = [];
+  let current = byId.get(String(categoryId));
+  const seen = new Set();
+  while (current) {
+    parts.unshift(current[field] || current.nameAr || "");
+    const parentId = parentRefId(current);
+    if (!parentId || seen.has(parentId)) break;
+    seen.add(parentId);
+    current = byId.get(parentId);
+  }
+  return parts.filter(Boolean).join(" / ");
+}
+
+function descendantIds(rootId, byId) {
+  const ids = [];
+  const queue = [String(rootId)];
+  const seen = new Set(queue);
+  while (queue.length) {
+    const currentId = queue.shift();
+    for (const [id, category] of byId) {
+      if (parentRefId(category) !== currentId || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+      queue.push(id);
+    }
+  }
+  return ids;
+}
+
+function subtreeSpan(rootId, byId) {
+  const rootDepth = categoryDepth(rootId, byId);
+  let deepest = rootDepth;
+  for (const id of descendantIds(rootId, byId)) {
+    deepest = Math.max(deepest, categoryDepth(id, byId));
+  }
+  return deepest - rootDepth;
+}
+
+async function loadCategoryMap() {
+  const categories = await Category.find()
+    .select("_id nameAr nameEn parent isActive")
+    .lean();
+  return buildCategoryMap(categories);
+}
+
+function serializeCategory(category, byId = null) {
   if (!category) return null;
+  const id = String(category._id);
   const parentDoc =
     category.parent && typeof category.parent === "object" && category.parent.nameAr
       ? category.parent
       : null;
+  const hasParent = Boolean(parentRefId(category));
+  const map = byId || null;
+  const depth = map ? categoryDepth(id, map) : hasParent ? 2 : 1;
+  const path = map ? categoryPathNames(id, map, "nameAr") : category.nameAr || "";
+  const pathEn = map ? categoryPathNames(id, map, "nameEn") : category.nameEn || "";
 
   return {
-    _id: String(category._id),
+    _id: id,
     name: category.nameAr,
     nameAr: category.nameAr,
     nameEn: category.nameEn,
@@ -97,10 +177,13 @@ function serializeCategory(category) {
       : category.parent
         ? String(category.parent)
         : null,
-    isMain: !category.parent,
+    isMain: !hasParent,
+    depth,
+    path,
+    pathEn,
     isActive: category.isActive !== false,
     image: serializeImage(category.image),
-    sizeChart: category.parent ? serializeImage(category.sizeChart) : null,
+    sizeChart: hasParent ? serializeImage(category.sizeChart) : null,
     createdAt: category.createdAt,
     updatedAt: category.updatedAt,
   };
@@ -118,17 +201,18 @@ function serializeOption(option) {
   };
 }
 
-function categoryPath(category) {
+function categoryPath(category, byId = null) {
   if (!category) return "";
+  if (byId) return categoryPathNames(String(category._id), byId, "nameAr");
   const own = category.nameAr || category.name || "";
   const parentName = category.parent?.nameAr || category.parent?.name;
   return parentName ? `${parentName} / ${own}` : own;
 }
 
-function serializeProduct(product) {
+function serializeProduct(product, byId = null) {
   const category =
     product.category && typeof product.category === "object" && product.category.nameAr
-      ? serializeCategory(product.category)
+      ? serializeCategory(product.category, byId)
       : product.category
         ? String(product.category)
         : null;
@@ -184,7 +268,10 @@ function serializeProduct(product) {
     stock: product.stock ?? 0,
     isActive: product.isActive !== false,
     category,
-    categoryPath: typeof category === "object" ? categoryPath(product.category) : "",
+    categoryPath:
+      typeof category === "object"
+        ? category.path || categoryPath(product.category, byId)
+        : "",
     sizeChart:
       typeof category === "object" && category.parent ? category.sizeChart || null : null,
     images: (product.images || []).map(serializeImage).filter(Boolean),
@@ -197,10 +284,11 @@ function serializeProduct(product) {
 }
 
 async function loadProducts(filter = {}) {
-  const products = await Product.find(filter)
-    .populate(productPopulate)
-    .sort({ createdAt: -1 });
-  return products.map(serializeProduct);
+  const [products, byId] = await Promise.all([
+    Product.find(filter).populate(productPopulate).sort({ createdAt: -1 }),
+    loadCategoryMap(),
+  ]);
+  return products.map((product) => serializeProduct(product, byId));
 }
 
 function bilingualNames(fields, arabicLabel, englishLabel, max = 160) {
@@ -262,25 +350,36 @@ async function resolveParent(parentValue, currentId) {
   const parentText = textValue(parentValue);
   if (!parentText) return null;
 
-  const parentId = assertObjectId(parentText, "القسم الرئيسي");
+  const parentId = assertObjectId(parentText, "القسم الأب");
   if (currentId && parentId === String(currentId)) {
     throw new ApiError("لا يمكن جعل القسم أباً لنفسه");
   }
 
-  const parent = await Category.findById(parentId);
-  if (!parent) throw new ApiError("القسم الرئيسي غير موجود", 404);
-  if (parent.parent) {
-    throw new ApiError("يمكن إضافة الأقسام الفرعية تحت قسم رئيسي فقط");
-  }
+  const byId = await loadCategoryMap();
+  const parent = byId.get(parentId);
+  if (!parent) throw new ApiError("القسم الأب غير موجود", 404);
 
   if (currentId) {
-    const childCount = await Category.countDocuments({ parent: currentId });
-    if (childCount > 0) {
-      throw new ApiError("لا يمكن تحويل قسم يحتوي أقساماً فرعية إلى قسم فرعي");
+    const forbidden = new Set([String(currentId), ...descendantIds(currentId, byId)]);
+    if (forbidden.has(parentId)) {
+      throw new ApiError("لا يمكن وضع القسم تحت أحد أقسامه الفرعية");
     }
   }
 
-  return parent._id;
+  const parentDepth = categoryDepth(parentId, byId);
+  if (parentDepth >= MAX_CATEGORY_DEPTH) {
+    throw new ApiError(`أقصى عمق للأقسام هو ${MAX_CATEGORY_DEPTH} طبقات`);
+  }
+
+  const nextDepth = parentDepth + 1;
+  if (currentId) {
+    const span = subtreeSpan(currentId, byId);
+    if (nextDepth + span > MAX_CATEGORY_DEPTH) {
+      throw new ApiError(`نقل القسم هنا هيتعدى الحد الأقصى ${MAX_CATEGORY_DEPTH} طبقات`);
+    }
+  }
+
+  return parent._id || parentId;
 }
 
 async function assertUniqueCategory(nameAr, nameEn, parent, excludeId) {
@@ -296,13 +395,9 @@ async function assertUniqueCategory(nameAr, nameEn, parent, excludeId) {
 
 async function categoryIdsFor(categoryId) {
   const id = assertObjectId(categoryId, "القسم");
-  const category = await Category.findById(id);
-  if (!category) throw new ApiError("القسم غير موجود", 404);
-
-  if (category.parent) return [category._id];
-
-  const children = await Category.find({ parent: category._id }).select("_id");
-  return [category._id, ...children.map((child) => child._id)];
+  const byId = await loadCategoryMap();
+  if (!byId.get(id)) throw new ApiError("القسم غير موجود", 404);
+  return [id, ...descendantIds(id, byId)];
 }
 
 function buildVariants(fields) {
@@ -373,7 +468,10 @@ export async function listCategories() {
   const categories = await Category.find()
     .populate("parent", "nameAr nameEn isActive")
     .sort({ createdAt: 1 });
-  return categories.map(serializeCategory);
+  const byId = buildCategoryMap(categories);
+  return categories
+    .map((category) => serializeCategory(category, byId))
+    .sort((a, b) => a.path.localeCompare(b.path, "ar") || a.depth - b.depth);
 }
 
 export async function addCategory(fields, files) {
@@ -401,7 +499,8 @@ export async function addCategory(fields, files) {
     sizeChart,
   });
   await category.populate("parent", "nameAr nameEn isActive");
-  return serializeCategory(category);
+  const byId = await loadCategoryMap();
+  return serializeCategory(category, byId);
 }
 
 export async function updateCategory(id, fields, files) {
@@ -450,7 +549,8 @@ export async function updateCategory(id, fields, files) {
   });
   await category.save();
   await category.populate("parent", "nameAr nameEn isActive");
-  return serializeCategory(category);
+  const byId = await loadCategoryMap();
+  return serializeCategory(category, byId);
 }
 
 export async function removeCategory(id) {
@@ -458,8 +558,10 @@ export async function removeCategory(id) {
   const category = await Category.findById(categoryId);
   if (!category) throw new ApiError("القسم غير موجود", 404);
 
-  const children = await Category.find({ parent: category._id });
-  const ids = [category._id, ...children.map((child) => child._id)];
+  const byId = await loadCategoryMap();
+  const childIds = descendantIds(categoryId, byId);
+  const ids = [category._id, ...childIds.map((childId) => childId)];
+  const tree = await Category.find({ _id: { $in: ids } });
   const products = await Product.find({ category: { $in: ids } });
 
   await Promise.all(
@@ -469,7 +571,7 @@ export async function removeCategory(id) {
   );
   await Product.deleteMany({ category: { $in: ids } });
   await Promise.all(
-    [category, ...children].flatMap((item) => [
+    tree.flatMap((item) => [
       deleteImage(item.image?.public_id),
       deleteImage(item.sizeChart?.public_id),
     ]),
@@ -486,9 +588,12 @@ export async function listProducts(categoryId) {
 
 export async function getProduct(id) {
   const productId = assertObjectId(id, "المنتج");
-  const product = await Product.findById(productId).populate(productPopulate);
+  const [product, byId] = await Promise.all([
+    Product.findById(productId).populate(productPopulate),
+    loadCategoryMap(),
+  ]);
   if (!product) throw new ApiError("المنتج غير موجود", 404);
-  return serializeProduct(product);
+  return serializeProduct(product, byId);
 }
 
 async function productPayload(fields, files, current) {

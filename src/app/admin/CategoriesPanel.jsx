@@ -32,6 +32,89 @@ async function apiRequest(path, options) {
   return payload;
 }
 
+function countDescendants(categoryId, categories) {
+  let count = 0;
+  const queue = [categoryId];
+  while (queue.length) {
+    const current = queue.shift();
+    categories.forEach((item) => {
+      if (parentIdOf(item) === current) {
+        count += 1;
+        queue.push(item._id);
+      }
+    });
+  }
+  return count;
+}
+
+function nestableParentOptions(categories, editingId) {
+  const forbidden = new Set();
+  if (editingId) {
+    forbidden.add(editingId);
+    const queue = [editingId];
+    while (queue.length) {
+      const current = queue.shift();
+      categories.forEach((item) => {
+        if (parentIdOf(item) === current && !forbidden.has(item._id)) {
+          forbidden.add(item._id);
+          queue.push(item._id);
+        }
+      });
+    }
+  }
+  return [...categories]
+    .filter((item) => !forbidden.has(item._id) && Number(item.depth || (parentIdOf(item) ? 2 : 1)) < 4)
+    .sort((a, b) => String(a.path || a.nameAr || "").localeCompare(String(b.path || b.nameAr || ""), "ar"));
+}
+
+function CategoryTree({ parentId, categories, products, onAdd, onEdit, onDelete }) {
+  const children = categories.filter((item) => parentIdOf(item) === parentId);
+  if (!children.length) return null;
+  return (
+    <div className="category-tree-list">
+      {children.map((sub) => {
+        const depth = Number(sub.depth || 2);
+        const subCount = products.filter((product) => {
+          const productCategoryId =
+            typeof product.category === "object" ? product.category?._id : product.category;
+          return productCategoryId === sub._id;
+        }).length;
+        return (
+          <div key={sub._id} className="category-sub-row" style={{ marginInlineStart: `${Math.max(0, depth - 2) * 12}px` }}>
+            <div>
+              <strong>{sub.nameAr || sub.name}</strong>
+              <small>
+                {sub.nameEn} · طبقة {depth}/4 · {subCount} منتج · {sub.isActive ? "نشط" : "غير نشط"}
+              </small>
+            </div>
+            <div className="category-sub-actions">
+              {depth < 4 ? (
+                <button type="button" onClick={() => onAdd(sub._id)}>
+                  فرعي
+                </button>
+              ) : null}
+              <button type="button" onClick={() => onEdit(sub)}>
+                تعديل
+              </button>
+              <button type="button" onClick={() => onDelete(sub)}>
+                حذف
+              </button>
+            </div>
+            <CategoryTree
+              parentId={sub._id}
+              categories={categories}
+              products={products}
+              onAdd={onAdd}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function categoryProducts(products, categoryId, categories) {
   const childIds = new Set(
     categories
@@ -155,11 +238,11 @@ export default function CategoriesPanel() {
   };
 
   const handleDeleteCategory = async (category) => {
-    const subs = categories.filter((item) => parentIdOf(item) === category._id);
+    const descendantCount = countDescendants(category._id, categories);
     const related = categoryProducts(products, category._id, categories);
     const warning = [
       `حذف "${category.nameAr || category.name}" نهائي.`,
-      subs.length ? `سيتم حذف ${subs.length} قسم فرعي.` : "",
+      descendantCount ? `سيتم حذف ${descendantCount} قسم تحته.` : "",
       related.length ? `وسيتم حذف ${related.length} منتج مرتبط.` : "",
       "هل تريد المتابعة؟",
     ]
@@ -178,18 +261,13 @@ export default function CategoriesPanel() {
     }
   };
 
-  const editingHasChildren =
-    editingCategory &&
-    editingCategory !== "new" &&
-    categories.some((category) => parentIdOf(category) === editingCategory._id);
-
   return (
     <section className="categories-management-panel">
       <div className="panel-header categories-panel-header">
         <div>
           <h2 className="font-serif text-2xl font-bold text-[#0f3b2e] m-0">إدارة الأقسام</h2>
           <p className="categories-subtitle">
-            أضف قسماً رئيسياً، ثم أقساماً فرعية تحته. المنتجات تُربط بأي مستوى منهما.
+            الشجرة لحد ٤ طبقات. تقدر توقف عند ٢ أو ٣ أو توصل ٤ حسب القسم. المنتجات تتربط بأي مستوى.
           </p>
         </div>
         <button type="button" onClick={() => openAddCategory("")} className="add-new-prod-btn font-sans">
@@ -242,40 +320,23 @@ export default function CategoriesPanel() {
                   <div className="category-sub-list">
                     <div className="category-sub-head">
                       <strong>الأقسام الفرعية ({subs.length})</strong>
-                      <button type="button" onClick={() => openAddCategory(category._id)}>
-                        إضافة فرعي
-                      </button>
+                      {(category.depth || 1) < 4 ? (
+                        <button type="button" onClick={() => openAddCategory(category._id)}>
+                          إضافة فرعي
+                        </button>
+                      ) : null}
                     </div>
                     {subs.length === 0 ? (
                       <p className="category-sub-empty">لا توجد أقسام فرعية بعد.</p>
                     ) : (
-                      subs.map((sub) => {
-                        const subCount = products.filter((product) => {
-                          const productCategoryId =
-                            typeof product.category === "object"
-                              ? product.category?._id
-                              : product.category;
-                          return productCategoryId === sub._id;
-                        }).length;
-                        return (
-                          <div key={sub._id} className="category-sub-row">
-                            <div>
-                              <strong>{sub.nameAr || sub.name}</strong>
-                              <small>
-                                {sub.nameEn} · {subCount} منتج · {sub.isActive ? "نشط" : "غير نشط"}
-                              </small>
-                            </div>
-                            <div className="category-sub-actions">
-                              <button type="button" onClick={() => openEditCategory(sub)}>
-                                تعديل
-                              </button>
-                              <button type="button" onClick={() => handleDeleteCategory(sub)}>
-                                حذف
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
+                      <CategoryTree
+                        parentId={category._id}
+                        categories={categories}
+                        products={products}
+                        onAdd={openAddCategory}
+                        onEdit={openEditCategory}
+                        onDelete={handleDeleteCategory}
+                      />
                     )}
                   </div>
 
@@ -373,20 +434,18 @@ export default function CategoriesPanel() {
                   value={categoryForm.parent}
                   onChange={(event) => setCategoryForm((current) => ({ ...current, parent: event.target.value }))}
                   className="modal-text-input text-right"
-                  disabled={editingHasChildren}
                 >
                   <option value="">قسم رئيسي</option>
-                  {mainCategories
-                    .filter((category) => editingCategory === "new" || category._id !== editingCategory._id)
-                    .map((category) => (
-                      <option key={category._id} value={category._id}>
-                        فرعي تحت: {category.nameAr || category.name}
-                      </option>
-                    ))}
+                  {nestableParentOptions(
+                    categories,
+                    editingCategory !== "new" ? editingCategory._id : null,
+                  ).map((category) => (
+                    <option key={category._id} value={category._id}>
+                      تحت: {category.path || category.nameAr || category.name} — {category.depth || 1}/4
+                    </option>
+                  ))}
                 </select>
-                {editingHasChildren && (
-                  <small className="product-images-hint">هذا القسم يحتوي أقساماً فرعية، لذلك يبقى قسماً رئيسياً.</small>
-                )}
+                <small className="product-images-hint">أقصى عمق ٤ طبقات. تقدر تختار أب من أي مستوى أقل من ٤.</small>
               </label>
 
               <label className="modal-input-group">

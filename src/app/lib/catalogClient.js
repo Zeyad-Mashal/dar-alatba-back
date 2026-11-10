@@ -24,22 +24,37 @@ export function categoryEnglishName(category) {
 
 export function visibleCategories(categories) {
   const active = categories.filter((category) => category.isActive !== false);
-  const activeIds = new Set(active.map((category) => category._id));
+  const byId = new Map(active.map((category) => [category._id, category]));
   return active.filter((category) => {
-    const parentId = parentIdOf(category);
-    return !parentId || activeIds.has(parentId);
+    let parentId = parentIdOf(category);
+    const seen = new Set();
+    while (parentId) {
+      if (seen.has(parentId)) return false;
+      seen.add(parentId);
+      const parent = byId.get(parentId);
+      if (!parent) return false;
+      parentId = parentIdOf(parent);
+    }
+    return true;
   });
 }
 
 export function categoryMatchIds(categoryId, categories) {
   if (!categoryId || categoryId === "all") return null;
   const category = categories.find((item) => item._id === categoryId);
-  if (!category || parentIdOf(category)) return new Set([categoryId]);
+  if (!category) return new Set([categoryId]);
 
   const ids = new Set([categoryId]);
-  categories.forEach((item) => {
-    if (parentIdOf(item) === categoryId) ids.add(item._id);
-  });
+  const queue = [categoryId];
+  while (queue.length) {
+    const current = queue.shift();
+    categories.forEach((item) => {
+      if (parentIdOf(item) === current && !ids.has(item._id)) {
+        ids.add(item._id);
+        queue.push(item._id);
+      }
+    });
+  }
   return ids;
 }
 
