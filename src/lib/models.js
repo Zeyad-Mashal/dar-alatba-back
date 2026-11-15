@@ -227,6 +227,26 @@ export const Order = mongoose.models.Order || mongoose.model("Order", orderSchem
 export const BeonEvent =
   mongoose.models.BeonEvent || mongoose.model("BeonEvent", beonEventSchema);
 
+const cartItemSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    productId: { type: String, default: "" },
+    name: { type: String, default: "" },
+    image: { type: String, default: "" },
+    price: { type: Number, default: 0 },
+    qty: { type: Number, default: 1, min: 1 },
+    sizeId: { type: String, default: null },
+    colorId: { type: String, default: null },
+    pantsSizeId: { type: String, default: null },
+    topSizeName: { type: String, default: "" },
+    pantsSizeName: { type: String, default: "" },
+    sizeName: { type: String, default: "" },
+    colorName: { type: String, default: "" },
+    maxStock: { type: Number, default: null },
+  },
+  { _id: false },
+);
+
 const customerSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -234,6 +254,7 @@ const customerSchema = new mongoose.Schema(
     phone: { type: String, default: "", trim: true },
     passwordHash: { type: String, required: true },
     favorites: { type: [String], default: [] },
+    cart: { type: [cartItemSchema], default: [] },
     sessionTokenHash: { type: String, default: null, index: true },
     resetCodeHash: { type: String, default: null },
     resetExpires: { type: Date, default: null },
@@ -241,5 +262,8 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+if (mongoose.models.Customer && !mongoose.models.Customer.schema.path("cart")) {
+  mongoose.deleteModel("Customer");
+}
 export const Customer =
   mongoose.models.Customer || mongoose.model("Customer", customerSchema);

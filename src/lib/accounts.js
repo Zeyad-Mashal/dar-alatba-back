@@ -32,12 +32,61 @@ function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function sanitizeCart(raw) {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? (() => {
+          try {
+            return JSON.parse(raw);
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+
+  const byId = new Map();
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const id = textValue(item.id || item.productId);
+    if (!id) continue;
+    const qty = Math.max(1, Math.min(99, Math.floor(Number(item.qty || item.quantity) || 1)));
+    const maxStockRaw = Number(item.maxStock);
+    const maxStock = Number.isFinite(maxStockRaw) && maxStockRaw >= 0 ? maxStockRaw : null;
+    const capped = maxStock == null ? qty : Math.min(qty, Math.max(1, maxStock) || qty);
+    const prev = byId.get(id);
+    if (prev) {
+      const nextQty = prev.qty + capped;
+      prev.qty = maxStock == null ? Math.min(99, nextQty) : Math.min(99, maxStock, nextQty);
+      continue;
+    }
+    byId.set(id, {
+      id,
+      productId: textValue(item.productId || item.product || id),
+      name: textValue(item.name).slice(0, 240),
+      image: textValue(item.image).slice(0, 500),
+      price: Math.max(0, Number(item.price) || 0),
+      qty: capped,
+      sizeId: item.sizeId ? String(item.sizeId) : null,
+      colorId: item.colorId ? String(item.colorId) : null,
+      pantsSizeId: item.pantsSizeId ? String(item.pantsSizeId) : null,
+      topSizeName: textValue(item.topSizeName).slice(0, 80),
+      pantsSizeName: textValue(item.pantsSizeName).slice(0, 80),
+      sizeName: textValue(item.sizeName).slice(0, 120),
+      colorName: textValue(item.colorName).slice(0, 120),
+      maxStock,
+    });
+  }
+  return [...byId.values()].slice(0, 50);
+}
+
 function publicCustomer(customer, token) {
   return {
     name: customer.name,
     email: customer.email,
     phone: customer.phone || "",
     favorites: Array.isArray(customer.favorites) ? customer.favorites : [],
+    cart: sanitizeCart(customer.cart),
     token,
   };
 }
@@ -73,6 +122,7 @@ export async function registerAccount(fields) {
     phone,
     passwordHash: hashPassword(password),
     favorites: [],
+    cart: [],
   });
   const token = issueToken(customer);
   await customer.save();
@@ -106,6 +156,19 @@ export async function getAccount(fields) {
 export async function getFavorites(fields) {
   const customer = await findByToken(fields.token);
   return { favorites: Array.isArray(customer.favorites) ? customer.favorites : [] };
+}
+
+export async function getCart(fields) {
+  const customer = await findByToken(fields.token);
+  return { cart: sanitizeCart(customer.cart) };
+}
+
+export async function setCart(fields) {
+  const customer = await findByToken(fields.token);
+  const cart = sanitizeCart(fields.cart || fields.items || fields.bag);
+  customer.cart = cart;
+  await customer.save();
+  return { cart };
 }
 
 export async function setFavorites(fields) {
