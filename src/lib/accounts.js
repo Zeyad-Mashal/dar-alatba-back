@@ -214,17 +214,30 @@ export async function requestPasswordReset(fields) {
   return { email, sent: true };
 }
 
-export async function resetPassword(fields) {
-  const email = normalizeEmail(requiredText(fields.email, "البريد", 160));
-  const code = textValue(fields.code);
-  const password = textValue(fields.password);
-  if (password.length < 6) throw new ApiError("كلمة المرور قصيرة");
+async function assertResetCode(email, code) {
   const customer = await Customer.findOne({ email });
   if (!customer) throw new ApiError("الحساب غير موجود", 404);
   if (!customer.resetCodeHash || !customer.resetExpires || customer.resetExpires.getTime() < Date.now()) {
     throw new ApiError("انتهت صلاحية الرمز", 400);
   }
   if (customer.resetCodeHash !== hashToken(code)) throw new ApiError("الرمز غير صحيح", 400);
+  return customer;
+}
+
+export async function verifyResetCode(fields) {
+  const email = normalizeEmail(requiredText(fields.email, "البريد", 160));
+  const code = textValue(fields.code);
+  if (!/^\d{6}$/.test(code)) throw new ApiError("الرمز غير صحيح", 400);
+  await assertResetCode(email, code);
+  return { email, valid: true };
+}
+
+export async function resetPassword(fields) {
+  const email = normalizeEmail(requiredText(fields.email, "البريد", 160));
+  const code = textValue(fields.code);
+  const password = textValue(fields.password);
+  if (password.length < 6) throw new ApiError("كلمة المرور قصيرة");
+  const customer = await assertResetCode(email, code);
   customer.passwordHash = hashPassword(password);
   customer.resetCodeHash = undefined;
   customer.resetExpires = undefined;
