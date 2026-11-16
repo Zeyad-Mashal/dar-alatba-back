@@ -1,5 +1,6 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { ApiError } from "./http";
+import { sendPasswordResetCode } from "./mail";
 import { Customer } from "./models";
 import { requiredText, textValue } from "./body";
 
@@ -209,7 +210,8 @@ export async function requestPasswordReset(fields) {
   customer.resetCodeHash = hashToken(code);
   customer.resetExpires = new Date(Date.now() + 10 * 60 * 1000);
   await customer.save();
-  return { email, code };
+  await sendPasswordResetCode({ to: email, code, name: customer.name });
+  return { email, sent: true };
 }
 
 export async function resetPassword(fields) {
