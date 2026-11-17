@@ -8,9 +8,9 @@ const KEYS = {
       titleAr: "سياسة الخصوصية",
       titleEn: "Privacy Policy",
       contentAr:
-        "بيانات الطلب زي الاسم والموبايل والعنوان بنستخدمها عشان نتواصل ونوصّل الطلب، ومش بنبيعها.\n\nحساب المتجر والمفضلة في النسخة الحالية متسجلين على جهازك في المتصفح، ومش بيتبعتوا كحساب على سيرفر.\n\nلو عايز تمسح الحساب من الجهاز، امسح بيانات الموقع من المتصفح أو سجّل الخروج.",
+        "نستخدم بيانات الطلب مثل الاسم والهاتف والعنوان للتواصل وتوصيل الطلب، ولا نبيعها.\n\nيُحفظ حساب المتجر والمفضلة على خوادم دار الأطباء لتتمكن من فتح الحساب نفسه من أي جهاز بعد تسجيل الدخول.\n\nلإنهاء الجلسة على الجهاز، سجّل الخروج. ولحذف الحساب بالكامل، يُرجى التواصل معنا.",
       contentEn:
-        "Order details such as your name, phone, and address are used to contact you and deliver the order. We do not sell them.\n\nIn the current version, the shop account and favorites stay in your browser on this device. They are not sent as an account to a server.\n\nTo remove that account from the device, clear this site's data in the browser or log out.",
+        "Order details such as your name, phone, and address are used to contact you and deliver the order. We do not sell them.\n\nYour shop account and favorites are stored on Dar Alatba servers so you can sign in from another device.\n\nTo end the session on this device, log out. To delete the account entirely, contact us.",
     },
   },
   returns: {
@@ -22,6 +22,28 @@ const KEYS = {
         "تقدر تطلب إرجاع خلال ١٤ يوم من استلام الطلب، لو القطعة لسه بحالتها الأصلية ومش مستخدمة.\n\nالإرجاع بيتم بعد التواصل على واتساب أو على 01007743765، وبنأكد حالة القطعة قبل استلامها.\n\nلو القطعة فيها عيب من عندنا، قول لنا وأرسل صورة عشان نبدّلها أو نرجّع قيمتها.",
       contentEn:
         "You can ask for a return within 14 days of receiving the order if the piece is still in its original condition and unused.\n\nReturns start on WhatsApp or at 01007743765. We confirm the piece before collecting it.\n\nIf a piece arrives with a fault, send us a photo so we can exchange it or refund it.",
+    },
+  },
+  about: {
+    label: "من نحن",
+    defaults: {
+      titleAr: "من نحن",
+      titleEn: "About us",
+      contentAr:
+        "دار الأطباء (Dar Alatba) متجر للسكراب الطبي وملابس العيادة في مصر، للرجال والنساء.\n\nالموقع daralatba.com، ويتم الطلب والتأكيد عبر واتساب أو الهاتف 01007743765.",
+      contentEn:
+        "Dar Alatba (دار الأطباء) is a shop for medical scrubs and clinic apparel in Egypt, for men and women.\n\nThe site is daralatba.com. Orders are confirmed on WhatsApp or by phone at 01007743765.",
+    },
+  },
+  terms: {
+    label: "الشروط والأحكام",
+    defaults: {
+      titleAr: "الشروط والأحكام",
+      titleEn: "Terms and conditions",
+      contentAr:
+        "يُؤكَّد الطلب بعد مراجعة البيانات والمقاس واللون والكمية. السعر المعروض بالجنيه المصري.\n\nطرق الدفع المتاحة عند إتمام الشراء: إنستاباي، فودافون كاش، أو الدفع عند الاستلام.\n\nاستخدام الموقع يعني أنك تشتري للاستخدام الشخصي أو لجهة عملك، ويجب أن تكون بيانات الطلب صحيحة لضمان التوصيل.",
+      contentEn:
+        "An order is confirmed after we review the details, size, color, and quantity. Prices are shown in Egyptian pounds.\n\nCheckout can be paid with Instapay, Vodafone Cash, or cash on delivery.\n\nUsing the site means you are buying for yourself or your workplace, and the order details need to be accurate for delivery.",
     },
   },
 };
