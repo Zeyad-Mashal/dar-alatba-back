@@ -7,8 +7,9 @@ function numberEnv(name, fallback) {
 
 /** Flat shipping fee when the free-shipping threshold from the ticker is not met. */
 export const STORE = {
-  shippingFee: numberEnv("SHIPPING_FEE", 85),
-  freeShippingFrom: numberEnv("FREE_SHIPPING_FROM", 3700),
+  // Keep these fixed in code so old Vercel env (100 / 500) cannot zero out shipping.
+  shippingFee: 85,
+  freeShippingFrom: 3700,
   embroideryPrice: numberEnv("EMBROIDERY_PRICE", 0),
   setDiscountPercent: 15,
 };
