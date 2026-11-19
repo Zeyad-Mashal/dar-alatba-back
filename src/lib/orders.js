@@ -202,10 +202,22 @@ export async function createOrder(fields, files) {
   try {
     if (receipt) transferImage = await uploadImage(receipt, "dar-alatba/orders");
     const productsTotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
-    const shippingFee = shippingFeeFor(productsTotal);
+    const computedShipping = await shippingFeeFor(productsTotal);
+    const clientShippingRaw = textValue(fields.shippingFee);
+    const clientShipping = Number(clientShippingRaw);
+    // Trust the storefront quote when it sends shippingFee (0 = free, otherwise flat fee).
+    const shippingFee =
+      clientShippingRaw !== "" && Number.isFinite(clientShipping) && clientShipping >= 0
+        ? clientShipping
+        : computedShipping;
     const embroideryNote = embroideryNoteFrom(fields, notes);
     const embroideryPrice = embroideryNote ? STORE.embroideryPrice : 0;
-    const payableTotal = productsTotal + shippingFee + embroideryPrice;
+    const computedPayable = productsTotal + shippingFee + embroideryPrice;
+    const clientPayable = Number(textValue(fields.payableTotal || fields.totalPrice));
+    const payableTotal =
+      Number.isFinite(clientPayable) && clientPayable >= productsTotal
+        ? clientPayable
+        : computedPayable;
     order = await Order.create({
       customerName,
       customerPhone,

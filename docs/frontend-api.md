@@ -642,7 +642,7 @@ const line = items.map((item) => (english ? item.textEn : item.textAr)).join("")
 
 ## 13. الطلبات وحالات BeOn
 
-العنوان: `https://dar-alatba-back.vercel.app` من غير شرطة في الآخر، والمسارات على الجذر.
+العنوان: `https://dar-alatba-back-blond.vercel.app` من غير شرطة في الآخر، والمسارات على الجذر.
 
 الفرونت ينشئ الطلب ويتابع حالته. تأكيد العميل وإلغاؤه من أزرار واتساب بيحصل على السيرفر عن طريق BeOn، والفرونت لا يستدعي مسار BeOn.
 

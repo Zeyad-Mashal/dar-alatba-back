@@ -77,8 +77,13 @@ export async function verifyBeonConnection() {
 export async function sendOrderWhatsapp(order) {
   const phoneNumber = toWhatsappPhone(order.customerPhone);
   const total = Number(order.payableTotal || order.totalPrice || 0);
+  const productsTotal = Number(order.productsTotal || 0);
+  const shippingFee = Number(order.shippingFee || 0);
   const lines = (order.items || []).map((item) => `${item.name} × ${item.quantity}`);
   if (order.embroideryNote) lines.push(`تطريز: ${order.embroideryNote}`);
+  if (productsTotal > 0) lines.push(`المنتجات: ${productsTotal} جنيه`);
+  lines.push(`الشحن: ${shippingFee} جنيه`);
+  lines.push(`الإجمالي: ${total} جنيه`);
 
   const json = await beonFetch("/partner/messages/whatsapp/template", {
     method: "POST",

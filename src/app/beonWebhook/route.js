@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export const GET = handle(async () => {
   return ok(
-    { url: "https://dar-alatba-back.vercel.app/beonWebhook" },
+    { url: "https://dar-alatba-back-blond.vercel.app/beonWebhook" },
     "مسار إشعارات BeOn جاهز",
   );
 });
